@@ -27,13 +27,13 @@ CP=cp
 DIR=\dmd2
 
 ## Visual C directories
-VCDIR="\Program Files (x86)\Microsoft Visual Studio 10.0\VC"
-SDKDIR="\Program Files (x86)\Microsoft SDKs\Windows\v7.0A"
+VCDIR=\Program Files (x86)\Microsoft Visual Studio 10.0\VC
+SDKDIR=\Program Files (x86)\Microsoft SDKs\Windows\v7.0A
 
 ## Flags for VC compiler
 
-#CFLAGS=/Zi /nologo /I$(VCDIR)\INCLUDE /I$(SDKDIR)\Include
-CFLAGS=/O2 /nologo /I$(VCDIR)\INCLUDE /I$(SDKDIR)\Include
+#CFLAGS=/Zi /nologo /I"$(VCDIR)\INCLUDE" /I"$(SDKDIR)\Include"
+CFLAGS=/O2 /nologo /I"$(VCDIR)\INCLUDE" /I"$(SDKDIR)\Include"
 
 ## Flags for dmd D compiler
 
@@ -47,9 +47,10 @@ UDFLAGS=-g -m$(MODEL) -O -w -d -property
 
 ## C compiler, linker, librarian
 
-CC=$(VCDIR)\bin\amd64\cl
-LD=$(VCDIR)\bin\amd64\link
-LIB=$(VCDIR)\bin\amd64\lib
+CC="$(VCDIR)\bin\amd64\cl"
+LD="$(VCDIR)\bin\amd64\link"
+AR="$(VCDIR)\bin\amd64\lib"
+MAKE=make
 
 ## D compiler
 
@@ -120,7 +121,7 @@ SRC_STD_3a= std\uni.d std\base64.d std\md5.d std\ctype.d std\ascii.d \
 
 SRC_STD_3b= std\signals.d std\typetuple.d std\traits.d \
     std\encoding.d std\xml.d \
-    std\random.d std\regexp.d \
+    std\random.d \
     std\exception.d \
     std\compiler.d std\cpuid.d \
     std\system.d std\concurrency.d
@@ -178,7 +179,7 @@ SRC_STD= std\zlib.d std\zip.d std\stdint.d std\container.d std\conv.d std\utf.d 
 	std\outbuffer.d std\md5.d std\base64.d \
 	std\mmfile.d \
 	std\syserror.d \
-	std\regexp.d std\random.d std\stream.d std\process.d \
+	std\random.d std\stream.d std\process.d \
 	std\socket.d std\socketstream.d std\format.d \
 	std\stdio.d std\perf.d std\uni.d std\uuid.d \
 	std\cstream.d std\demangle.d \
@@ -341,7 +342,6 @@ DOCS=	$(DOC)\object.html \
 	$(DOC)\std_random.html \
 	$(DOC)\std_range.html \
 	$(DOC)\std_regex.html \
-	$(DOC)\std_regexp.html \
 	$(DOC)\std_signals.html \
 	$(DOC)\std_socket.html \
 	$(DOC)\std_socketstream.html \
@@ -455,7 +455,7 @@ html : $(DOCS)
 
 $(ZLIB): $(SRC_ZLIB)
 	cd etc\c\zlib
-	make -f win$(MODEL).mak zlib$(MODEL).lib
+	$(MAKE) -f win$(MODEL).mak zlib$(MODEL).lib "CC=\$(CC)"\"" "LIB=\$(AR)"\"" "VCDIR=$(VCDIR)"
 	cd ..\..\..
 
 ################## DOCS ####################################
@@ -633,9 +633,6 @@ $(DOC)\std_range.html : $(STDDOC) std\range.d
 $(DOC)\std_regex.html : $(STDDOC) std\regex.d
 	$(DMD) -c -o- $(DDOCFLAGS) -Df$(DOC)\std_regex.html $(STDDOC) std\regex.d
 
-$(DOC)\std_regexp.html : $(STDDOC) std\regexp.d
-	$(DMD) -c -o- $(DDOCFLAGS) -Df$(DOC)\std_regexp.html $(STDDOC) std\regexp.d
-
 $(DOC)\std_signals.html : $(STDDOC) std\signals.d
 	$(DMD) -c -o- $(DDOCFLAGS) -Df$(DOC)\std_signals.html $(STDDOC) std\signals.d
 
@@ -800,7 +797,7 @@ phobos.zip : zip
 
 clean:
 	cd etc\c\zlib
-	make -f win$(MODEL).mak clean
+	$(MAKE) -f win$(MODEL).mak clean
 	cd ..\..\..
 	del $(DOCS)
 	del $(UNITTEST_OBJS) unittest.obj unittest.exe
