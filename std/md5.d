@@ -164,7 +164,10 @@ unittest
     string a = "Mary has ", b = "a little lamb";
     int[] c = [ 1, 2, 3, 4, 5 ];
     string d = getDigestString(a, b, c);
-    assert(d == "F36625A66B2A8D9F47270C00C8BEFD2F", d);
+    version(LittleEndian)
+        assert(d == "F36625A66B2A8D9F47270C00C8BEFD2F", d);
+    else
+        assert(d == "2656D2008FF10DAE4B0783E6E0171655", d);
 }
 
 /**
@@ -212,28 +215,28 @@ struct MD5_CTX
      */
     static void FF(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
     {
-        a += F (b, c, d) + x + cast(uint)(ac);
+        a += F (b, c, d) + x + ac;
         a = ROTATE_LEFT (a, s);
         a += b;
     }
 
     static void GG(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
     {
-        a += G (b, c, d) + x + cast(uint)(ac);
+        a += G (b, c, d) + x + ac;
         a = ROTATE_LEFT (a, s);
         a += b;
     }
 
     static void HH(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
     {
-        a += H (b, c, d) + x + cast(uint)(ac);
+        a += H (b, c, d) + x + ac;
         a = ROTATE_LEFT (a, s);
         a += b;
     }
 
     static void II(ref uint a, uint b, uint c, uint d, uint x, uint s, uint ac)
     {
-        a += I (b, c, d) + x + cast(uint)(ac);
+        a += I (b, c, d) + x + ac;
         a = ROTATE_LEFT (a, s);
         a += b;
     }

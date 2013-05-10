@@ -1117,12 +1117,7 @@ unittest
     }
 }
 
-/**
-    $(RED Deprecated. It will be removed in January 2013.
-          Please use $(XREF format, formattedWrite) instead.)
-
-    Conversions to string with optional configures.
-*/
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use std.format.formattedWrite instead.")
 T toImpl(T, S)(S s, in T leftBracket, in T separator = ", ", in T rightBracket = "]")
     if (!isSomeChar!(ElementType!S) && (isInputRange!S || isInputRange!(Unqual!S)) &&
@@ -1157,7 +1152,7 @@ T toImpl(T, S)(S s, in T leftBracket, in T separator = ", ", in T rightBracket =
     }
 }
 
-/// ditto
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use std.format.formattedWrite instead.")
 T toImpl(T, S)(ref S s, in T leftBracket, in T separator = " ", in T rightBracket = "]")
     if ((is(S == void[]) || is(S == const(void)[]) || is(S == immutable(void)[])) &&
@@ -1166,7 +1161,7 @@ T toImpl(T, S)(ref S s, in T leftBracket, in T separator = " ", in T rightBracke
     return toImpl(s);
 }
 
-/// ditto
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use std.format.formattedWrite instead.")
 T toImpl(T, S)(S s, in T leftBracket, in T keyval = ":", in T separator = ", ", in T rightBracket = "]")
     if (isAssociativeArray!S && !is(S == enum) &&
@@ -1190,7 +1185,7 @@ T toImpl(T, S)(S s, in T leftBracket, in T keyval = ":", in T separator = ", ", 
     return cast(T) result.data;
 }
 
-/// ditto
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use std.format.formattedWrite instead.")
 T toImpl(T, S)(S s, in T nullstr)
     if (is(S : Object) &&
@@ -1201,7 +1196,7 @@ T toImpl(T, S)(S s, in T nullstr)
     return to!T(s.toString());
 }
 
-/// ditto
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use std.format.formattedWrite instead.")
 T toImpl(T, S)(S s, in T left, in T separator = ", ", in T right = ")")
     if (is(S == struct) && !is(typeof(&S.init.toString)) && !isInputRange!S &&
@@ -3748,10 +3743,10 @@ unittest
 private void testEmplaceChunk(void[] chunk, size_t typeSize, size_t typeAlignment, string typeName)
 {
     enforceEx!ConvException(chunk.length >= typeSize,
-        xformat("emplace: Chunk size too small: %s < %s size = %s",
+        format("emplace: Chunk size too small: %s < %s size = %s",
         chunk.length, typeName, typeSize));
     enforceEx!ConvException((cast(size_t) chunk.ptr) % typeAlignment == 0,
-        xformat("emplace: Misaligned memory block (0x%X): it must be %s-byte aligned for type %s",
+        format("emplace: Misaligned memory block (0x%X): it must be %s-byte aligned for type %s",
         chunk.ptr, typeAlignment, typeName));
 }
 

@@ -65,10 +65,7 @@ class FormatException : Exception
     }
 }
 
-/++
-    $(RED Deprecated. It will be removed In January 2013.
-          Please use $(D FormatException) instead.)
- +/
+// Explicitly undocumented. It will be removed in November 2013.
 deprecated("Please use FormatException instead.")
 alias FormatException FormatError;
 
@@ -2283,7 +2280,7 @@ if (!is(StringTypeOf!T) && !is(CharTypeOf!T) || is(T == enum))
 }
 
 /**
-   Associative arrays are formatted by using $(D ':') and $(D ', ') as
+   Associative arrays are formatted by using $(D ':') and $(D ", ") as
    separators, and enclosed by $(D '[') and $(D ']').
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
