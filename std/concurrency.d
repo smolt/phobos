@@ -348,12 +348,6 @@ private:
     return owner;
 }
 
-version (Xyzzy) unittest
-{
-    // hangs today, so abort early
-    assert(false, "I think TLS support is needed before concurrent works");
-}
-else
 unittest
 {
     static void fun()
