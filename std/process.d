@@ -670,6 +670,20 @@ private bool isExecutable(in char[] path) @trusted //TODO: @safe nothrow
     return (access(toStringz(path), X_OK) == 0);
 }
 
+version (Xyzzy)
+{
+    unittest
+    {
+        import ldc.xyzzy; skipTest();
+        pragma(msg, "many process syscalls do not work on normal iOS");
+    }
+}
+else
+{
+    version = NotXyzzy;
+}
+
+version (NotXyzzy)
 version (Posix) unittest
 {
     auto unamePath = searchPathFor("uname");
@@ -699,6 +713,7 @@ private void setCLOEXEC(int fd, bool on)
     }
 }
 
+version (NotXyzzy)
 unittest // Command line arguments in spawnProcess().
 {
     version (Windows) TestScript prog =
@@ -716,6 +731,7 @@ unittest // Command line arguments in spawnProcess().
     assert (wait(spawnProcess([prog.path, "foo", "bar"])) == 0);
 }
 
+version (NotXyzzy)
 unittest // Environment variables in spawnProcess().
 {
     // We really should use set /a on Windows, but Wine doesn't support it.
@@ -761,6 +777,7 @@ unittest // Environment variables in spawnProcess().
     assert (wait(spawnProcess(envProg.path, env, Config.newEnv)) == 6);
 }
 
+version (NotXyzzy)
 unittest // Stream redirection in spawnProcess().
 {
     version (Windows) TestScript prog =
@@ -871,6 +888,7 @@ Pid spawnShell(in char[] command,
                       config);
 }
 
+version (NotXyzzy)
 unittest
 {
     version (Windows)
@@ -1160,6 +1178,7 @@ int wait(Pid pid) @safe
 }
 
 
+version (NotXyzzy)
 unittest // Pid and wait()
 {
     version (Windows)    TestScript prog = "exit %~1";
@@ -1322,6 +1341,7 @@ void kill(Pid pid, int codeOrSignal)
     }
 }
 
+version (NotXyzzy)
 unittest // tryWait() and kill()
 {
     import core.thread;
@@ -1725,6 +1745,7 @@ enum Redirect
     stdoutToStderr = 16,
 }
 
+version (NotXyzzy)
 unittest
 {
     version (Windows) TestScript prog =
@@ -1781,6 +1802,7 @@ unittest
     assert (wait(pp.pid) == 1);
 }
 
+version (NotXyzzy)
 unittest
 {
     TestScript prog = "exit 0";
@@ -1984,6 +2006,7 @@ private auto executeImpl(alias pipeFunc, Cmd)(
     return ProcessOutput(wait(p.pid), cast(string) a.data);
 }
 
+version (NotXyzzy)
 unittest
 {
     // To avoid printing the newline characters, we use the echo|set trick on
@@ -2004,6 +2027,7 @@ unittest
     assert (s.output.stripRight() == "HelloWorld");
 }
 
+version (NotXyzzy)
 unittest
 {
     auto r1 = executeShell("echo foo");
@@ -3236,6 +3260,7 @@ string shell(string cmd)
         static assert(0, "shell not implemented for this OS.");
 }
 
+version (NotXyzzy)
 unittest
 {
     auto x = shell("echo wyda");
