@@ -1217,6 +1217,16 @@ Removes the lock over the specified file segment.
         // the same process. fork() is used to create a second process.
         static void runForked(void delegate() code)
         {
+            version (Xyzzy)
+            {
+                import ldc.xyzzy; skipTest();
+                pragma(msg, "fork is not supposed to work on normal iOS");
+                // this kind of file locking doesn't really make sense in iOS
+                // anyway because processes are not normally allowed to access
+                // the same files.
+            }
+            else
+            {
             import core.sys.posix.unistd;
             import core.sys.posix.sys.wait;
             int child, status;
@@ -1230,6 +1240,7 @@ Removes the lock over the specified file segment.
                 assert(wait(&status) != -1);
                 assert(status == 0, "Fork crashed");
             }
+            } // ! version Xyzzy
         }
 
         auto f = File(deleteme, "w+b");
