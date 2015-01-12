@@ -852,6 +852,7 @@ unittest // Error handling in spawnProcess()
     assertThrown!ProcessException(spawnProcess("./rgiuhrifuheiohnmnvqweoijwf"));
 }
 
+version (NotXyzzy)
 unittest // Specifying a working directory.
 {
     TestScript prog = "echo foo>bar";
