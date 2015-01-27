@@ -175,7 +175,15 @@ else version(useSysctlbyname)
     {
         version(OSX)
         {
-            auto nameStr = "machdep.cpu.core_count\0".ptr;
+            // see man sysctl(3) for choice of hw.logicalcpu
+            // which appears to consider hyperthreading.
+            //
+            // machdep.cpu.core_count fails on iOS, on OSX seems to be
+            // same as hw.physicalcpu (does not consider hyperthreading)
+            //
+            // hw.ncpu could work, but is deprecated and appears to be same as
+            // hw.physicalcpu
+            auto nameStr = "hw.logicalcpu\0".ptr;
         }
         else version(FreeBSD)
         {
