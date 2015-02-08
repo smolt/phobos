@@ -697,20 +697,21 @@ private bool isExecutable(in char[] path) @trusted //TODO: @safe nothrow
     return (access(toStringz(path), X_OK) == 0);
 }
 
-version (Xyzzy)
+version (IPhoneOS)
 {
-    unittest
+    // iOS has Posix syscalls, but many like fork() return -1.  This module
+    // compiles fine and is valid, but certain unittests will fail as a normal
+    // user app on iOS.  Just skip those tests.
+    version = SkipTest;
+    
+    version (SkipTest) unittest
     {
         import ldc.xyzzy; skipTest();
         pragma(msg, "many process syscalls do not work on normal iOS");
     }
 }
-else
-{
-    version = NotXyzzy;
-}
 
-version (NotXyzzy)
+version (SkipTest) {} else
 version (Posix) unittest
 {
     auto unamePath = searchPathFor("uname");
@@ -740,7 +741,7 @@ private void setCLOEXEC(int fd, bool on)
     }
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest // Command line arguments in spawnProcess().
 {
     version (Windows) TestScript prog =
@@ -758,7 +759,7 @@ unittest // Command line arguments in spawnProcess().
     assert (wait(spawnProcess([prog.path, "foo", "bar"])) == 0);
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest // Environment variables in spawnProcess().
 {
     // We really should use set /a on Windows, but Wine doesn't support it.
@@ -804,7 +805,7 @@ unittest // Environment variables in spawnProcess().
     assert (wait(spawnProcess(envProg.path, env, Config.newEnv)) == 6);
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest // Stream redirection in spawnProcess().
 {
     version (Windows) TestScript prog =
@@ -852,7 +853,7 @@ unittest // Error handling in spawnProcess()
     assertThrown!ProcessException(spawnProcess("./rgiuhrifuheiohnmnvqweoijwf"));
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest // Specifying a working directory.
 {
     TestScript prog = "echo foo>bar";
@@ -948,7 +949,7 @@ Pid spawnShell(in char[] command,
                       workDir);
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest
 {
     version (Windows)
@@ -1255,7 +1256,7 @@ int wait(Pid pid) @safe
 }
 
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest // Pid and wait()
 {
     version (Windows)    TestScript prog = "exit %~1";
@@ -1408,7 +1409,7 @@ void kill(Pid pid, int codeOrSignal)
     }
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest // tryWait() and kill()
 {
     import core.thread;
@@ -1774,7 +1775,7 @@ enum Redirect
     stdoutToStderr = 16,
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest
 {
     version (Windows) TestScript prog =
@@ -1831,7 +1832,7 @@ unittest
     assert (wait(pp.pid) == 1);
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest
 {
     TestScript prog = "exit 0";
@@ -2040,7 +2041,7 @@ private auto executeImpl(alias pipeFunc, Cmd)(
     return Tuple!(int, "status", string, "output")(wait(p.pid), cast(string) a.data);
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest
 {
     // To avoid printing the newline characters, we use the echo|set trick on
@@ -2061,7 +2062,7 @@ unittest
     assert (s.output.stripRight() == "HelloWorld");
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest
 {
     auto r1 = executeShell("echo foo");
@@ -3334,7 +3335,7 @@ string shell(string cmd)
         static assert(0, "shell not implemented for this OS.");
 }
 
-version (NotXyzzy)
+version (SkipTest) {} else
 unittest
 {
     auto x = shell("echo wyda");
