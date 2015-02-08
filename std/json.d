@@ -355,6 +355,38 @@ struct JSONValue
         return k in store.object;
     }
 
+    bool opEquals(const JSONValue rhs) const
+    {
+        return opEquals(rhs);
+    }
+
+    bool opEquals(ref const JSONValue rhs) const
+    {
+        // Default doesn't work well since store is a union.  Compare only
+        // what should be in store.
+        if (type_tag != rhs.type_tag) return false;
+
+        final switch (type_tag)
+        {
+        case JSON_TYPE.STRING:
+            return store.str == rhs.store.str;
+        case JSON_TYPE.INTEGER:
+            return store.integer == rhs.store.integer;
+        case JSON_TYPE.UINTEGER:
+            return store.uinteger == rhs.store.uinteger;
+        case JSON_TYPE.FLOAT:
+            return store.floating == rhs.store.floating;
+        case JSON_TYPE.OBJECT:
+            return store.object == rhs.store.object;
+        case JSON_TYPE.ARRAY:
+            return store.array == rhs.store.array;
+        case JSON_TYPE.TRUE:
+        case JSON_TYPE.FALSE:
+        case JSON_TYPE.NULL:
+            return true;
+        }
+    }
+
     /// Implements the foreach $(D opApply) interface for json arrays.
     int opApply(int delegate(size_t index, ref JSONValue) dg)
     {
@@ -953,27 +985,6 @@ unittest
 
     jv.object = ["key" : JSONValue("value")];
     assert(jv.type == JSON_TYPE.OBJECT);
-    version (Xyzzy)
-    {
-        import ldc.xyzzy; skipTest();
-        pragma(msg, "something needs to be looked at here");
-        // It is the comparison of make this pass
-        import std.stdio : writeln, writef;
-        writeln(q{assert(jv.object == ["key" : JSONValue("value")]) fails: },
-                jv.object == ["key" : JSONValue("value")]);
-        writeln("These reason is that comparing unions using default opEqual "
-                "is questionable");
-        writeln("JSONValue EQUAL? ",
-                JSONValue("value") == JSONValue("value"));
-        writeln(".store EQUAL? ",
-                JSONValue("value").store == JSONValue("value").store);
-        // But these are EQUAL
-        writeln(".type EQUAL? ",
-                JSONValue("value").type == JSONValue("value").type);
-        writeln(".str EQUAL? ",
-                JSONValue("value").str == JSONValue("value").str);
-    }
-    else
     assert(jv.object == ["key" : JSONValue("value")]);
 
     jv.array = [JSONValue(1), JSONValue(2), JSONValue(3)];
