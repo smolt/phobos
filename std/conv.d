@@ -1133,20 +1133,9 @@ unittest
 
     foreach (E; TypeTuple!(EB, EU, EI, EF, EC, ES))
     {
-        version (Xyzzy)
-        {
-            import ldc.xyzzy; skipTest();
-            import std.stdio: writeln;
-            writeln("to!string ", to! string(E.a));
-            writeln("to!wstring ", to!wstring(E.a));
-            writeln("to!dstring ", to!dstring(E.a));
-        }
-        // Problem with real EF version, gets "c" instead of "a"
-        if (!is(E == EF)) {
         assert(to! string(E.a) == "a"c);
         assert(to!wstring(E.a) == "a"w);
         assert(to!dstring(E.a) == "a"d);
-        } // Xyzzy
     }
 
     // Test an value not corresponding to an enum member.
