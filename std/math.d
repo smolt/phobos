@@ -107,7 +107,7 @@ version (IPhoneOS) version (unittest)
         int d = feqrel(a, b);
         if (d < T.mant_dig)
         {
-            writefln("%s:%u: match %d out of %d bits",
+            writefln("%s(%u): match %d out of %d bits",
                      file, line, d, T.mant_dig);
             writefln("%g == %g", a, b);
             writefln("%a == %a", a, b);
