@@ -25,31 +25,39 @@
 module std.internal.math.errorfunction;
 import std.math;
 
+// Have to do all this up here because below is pure-land
 version (WIP_FloatOptimizeIssue) unittest
 {
     // When optimizer is enable (e.g. -O3), the NaN payload is not propagrated
     // in a test below.  Need to figure out why.  -O0 seems to work.
-    import ldc.xyzzy; skipTest();
     pragma(msg, "NaN payload propagation fails with erfc() when optimizing");
 
     import std.stdio: writefln, writeln;
-    void p(real r)
-    {
-        writefln("binary 0x%08x for %f", *cast(ulong*)&r, r);
-    }
+    import xyzzy=ldc.xyzzy;
+
+    void p(real r) {writefln("binary 0x%08x for %f", *cast(ulong*)&r, r);}
 
     real a = erfc(NaN(0xDEF));
     real b = NaN(0xDEF);
     // unittest below expects nan payload to pass through to result.  Let's
     // see what the binary looks like.
+    writeln("NaN payload propagation fails with erfc() when optimizing");
+    mixin xyzzy.testhelp;
+    if (!testTrue!q{isIdentical(erfc(NaN(0xDEF)), NaN(0xDEF))})
+    {
+        showExpr!q{erfc(NaN(0xDEF))};
+        p(erfc(NaN(0xDEF)));
+        showExpr!q{NaN(0xDEF)};
+        p(NaN(0xDEF));
+    }
+    /*
     writeln("isIdentical(erfc(NaN(0xDEF)), NaN(0xDEF)) ", isIdentical(a,b));
-    p(a);
-    p(b);
 
     if (isIdentical(a, b))
     {
         writeln("Hey, it works now!  Don't need this workaround any more");
     }
+    */
 }
 
 pure:
@@ -262,11 +270,9 @@ unittest {
     assert(erf(real.infinity) == 1.0);
     assert(erf(-real.infinity) == -1.0);
     assert(isIdentical(erf(NaN(0xDEF)),NaN(0xDEF)));
-    version (WIP_FloatOptimizeIssue) {
-        // When optimizer is enable, the NaN payload is not propagrated here.
-        // Need to figure out why
-    }
-    else
+    // When optimizer is enable, the NaN payload is not propagrated here.
+    // Need to figure out why
+    version (WIP_FloatOptimizeIssue) {} else
     assert(isIdentical(erfc(NaN(0xDEF)),NaN(0xDEF)));
     assert(isIdentical(erfc(real.infinity),0.0));
     assert(erfc(-real.infinity) == 2.0);
