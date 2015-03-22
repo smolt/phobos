@@ -1215,6 +1215,20 @@ Removes the lock over the specified file segment.
 
         // Since locks are per-process, we cannot test lock failures within
         // the same process. fork() is used to create a second process.
+        version (IPhoneOS)
+        {
+            pragma(msg, "fork does not work on normal iOS");
+            // this kind of file locking doesn't really make sense in iOS
+            // anyway because processes are not normally allowed to access
+            // the same files.  But can test the basic lock function
+            // within the same process and skip the tests in a second
+            // process.
+            static void runForked(void delegate() code)
+            {
+                import ldc.xyzzy; skipTest();
+            }
+        }
+        else
         static void runForked(void delegate() code)
         {
             import core.sys.posix.unistd;
