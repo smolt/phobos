@@ -2653,79 +2653,203 @@ unittest
  *      $(TR $(TD $(NAN))            $(TD FP_ILOGBNAN) $(TD no))
  *      )
  */
-int ilogb(real x)  @trusted nothrow @nogc
+int ilogb(T)(const T x) @trusted nothrow @nogc
+    if(isFloatingPoint!T)
 {
-    version (Win64_DMD_InlineAsm_X87)
+    import core.bitop : bsr;
+    // Provide a bsr implementation for ulong in 32-bit mode
+    int bsr_ulong(ulong x) @trusted pure nothrow @nogc
     {
-        asm pure nothrow @nogc
+        static if (size_t.sizeof == 4)
         {
-            naked                       ;
-            fld     real ptr [RCX]      ;
-            fxam                        ;
-            fstsw   AX                  ;
-            and     AH,0x45             ;
-            cmp     AH,0x40             ;
-            jz      Lzeronan            ;
-            cmp     AH,5                ;
-            jz      Linfinity           ;
-            cmp     AH,1                ;
-            jz      Lzeronan            ;
-            fxtract                     ;
-            fstp    ST(0)               ;
-            fistp   dword ptr 8[RSP]    ;
-            mov     EAX,8[RSP]          ;
-            ret                         ;
-
-        Lzeronan:
-            mov     EAX,0x80000000      ;
-            fstp    ST(0)               ;
-            ret                         ;
-
-        Linfinity:
-            mov     EAX,0x7FFFFFFF      ;
-            fstp    ST(0)               ;
-            ret                         ;
+            size_t msb = x >> 32;
+            size_t lsb = cast(size_t) x;
+            if (msb)
+                return bsr(msb) + 32;
+            else
+                return bsr(lsb);
+        }
+        else
+        {
+            return bsr(x);
         }
     }
-    else version (CRuntime_Microsoft)
-    {
-        int res;
-        asm pure nothrow @nogc
-        {
-            naked                       ;
-            fld     real ptr [x]        ;
-            fxam                        ;
-            fstsw   AX                  ;
-            and     AH,0x45             ;
-            cmp     AH,0x40             ;
-            jz      Lzeronan            ;
-            cmp     AH,5                ;
-            jz      Linfinity           ;
-            cmp     AH,1                ;
-            jz      Lzeronan            ;
-            fxtract                     ;
-            fstp    ST(0)               ;
-            fistp   res                 ;
-            mov     EAX,res             ;
-            jmp     Ldone               ;
 
-        Lzeronan:
-            mov     EAX,0x80000000      ;
-            fstp    ST(0)               ;
+    alias F = floatTraits!T;
 
-        Linfinity:
-            mov     EAX,0x7FFFFFFF      ;
-            fstp    ST(0)               ;
-        Ldone: ;
-        }
-    }
+    Unqual!T vf = x;
+    ushort* vu = cast(ushort*)&vf;
+    uint* vui = cast(uint*)&vf;
+    static if(is(Unqual!T == float))
+        int* vi = cast(int*)&vf;
     else
-        return core.stdc.math.ilogbl(x);
+        long* vl = cast(long*)&vf;
+
+    int ex = vu[F.EXPPOS_SHORT] & F.EXPMASK;
+    static if (F.realFormat == RealFormat.ieeeExtended)
+    {
+        if (ex)
+        {   // If exponent is non-zero
+            if (ex == F.EXPMASK) // infinity or NaN
+            {
+                if (*vl &  0x7FFF_FFFF_FFFF_FFFF)  // NaN
+                    return FP_ILOGBNAN;
+                else // +-infinity
+                    return int.max;
+            }
+            else
+            {
+                return ex - F.EXPBIAS - 1;
+            }
+        }
+        else if (!*vl)
+        {   // vf is +-0.0
+            return FP_ILOGB0;
+        }
+        else
+        {   // subnormal
+            uint msb = vui[MANTISSA_MSB];
+            uint lsb = vui[MANTISSA_LSB];
+            if (msb)
+                return ex - F.EXPBIAS - T.mant_dig + 1 + 32 + bsr(msb);
+            else
+                return ex - F.EXPBIAS - T.mant_dig + 1 + bsr(lsb);
+        }
+    }
+    else static if (F.realFormat == RealFormat.ieeeQuadruple)
+    {
+        if (ex)     // If exponent is non-zero
+        {
+            if (ex == F.EXPMASK)
+            {   // infinity or NaN
+                if (vl[MANTISSA_LSB] | ( vl[MANTISSA_MSB] & 0x0000_FFFF_FFFF_FFFF))  // NaN
+                    return FP_ILOGBNAN;
+                else // +- infinity
+                    return int.max;
+            }
+            else
+            {
+                return ex - F.EXPBIAS - 1;
+            }
+        }
+        else if ((vl[MANTISSA_LSB]
+                       |(vl[MANTISSA_MSB] & 0x0000_FFFF_FFFF_FFFF)) == 0)
+        {   // vf is +-0.0
+            return FP_ILOGB0;
+        }
+        else
+        {   // subnormal
+            ulong msb = vl[MANTISSA_MSB] & 0x0000_FFFF_FFFF_FFFF;
+            ulong lsb = vl[MANTISSA_LSB];
+            if (msb)
+                return ex - F.EXPBIAS - T.mant_dig + 1 + bsr_ulong(msb) + 64;
+            else
+                return ex - F.EXPBIAS - T.mant_dig + 1 + bsr_ulong(lsb);
+        }
+    }
+    else static if (F.realFormat == RealFormat.ieeeDouble)
+    {
+        if (ex) // If exponent is non-zero
+        {
+            if (ex == F.EXPMASK)   // infinity or NaN
+            {
+                if ((*vl & 0x7FFF_FFFF_FFFF_FFFF) == 0x7FF0_0000_0000_0000)  // +- infinity
+                    return int.max;
+                else // NaN
+                    return FP_ILOGBNAN;
+            }
+            else
+            {
+                return ((ex - F.EXPBIAS) >> 4) - 1;
+            }
+        }
+        else if (!(*vl & 0x7FFF_FFFF_FFFF_FFFF))
+        {   // vf is +-0.0
+            return FP_ILOGB0;
+        }
+        else
+        {   // subnormal
+            uint msb = vui[MANTISSA_MSB] & F.MANTISSAMASK_INT;
+            uint lsb = vui[MANTISSA_LSB];
+            if (msb)
+                return ((ex - F.EXPBIAS) >> 4) - T.mant_dig + 1 + bsr(msb) + 32;
+            else
+                return ((ex - F.EXPBIAS) >> 4) - T.mant_dig + 1 + bsr(lsb);
+        }
+    }
+    else static if (F.realFormat == RealFormat.ieeeSingle)
+    {
+        if (ex) // If exponent is non-zero
+        {
+            if (ex == F.EXPMASK)   // infinity or NaN
+            {
+                if ((*vi & 0x7FFF_FFFF) == 0x7F80_0000)  // +- infinity
+                    return int.max;
+                else // NaN
+                    return FP_ILOGBNAN;
+            }
+            else
+            {
+                return ((ex - F.EXPBIAS) >> 7) - 1;
+            }
+        }
+        else if (!(*vi & 0x7FFF_FFFF))
+        {   // vf is +-0.0
+            return FP_ILOGB0;
+        }
+        else
+        {   // subnormal
+            uint mantissa = vui[0] & F.MANTISSAMASK_INT;
+            return ((ex - F.EXPBIAS) >> 7) - T.mant_dig + 1 + bsr(mantissa);
+        }
+    }
+    else // static if (F.realFormat == RealFormat.ibmExtended)
+    {
+        core.stdc.math.ilogbl(x);
+    }
 }
 
 alias FP_ILOGB0   = core.stdc.math.FP_ILOGB0;
 alias FP_ILOGBNAN = core.stdc.math.FP_ILOGBNAN;
 
+@trusted nothrow @nogc unittest
+{
+    assert(ilogb(real.nan) == FP_ILOGBNAN);
+    assert(ilogb(-real.nan) == FP_ILOGBNAN);
+    assert(ilogb(-float.nan) == FP_ILOGBNAN);
+    assert(ilogb(double.nan) == FP_ILOGBNAN);
+    assert(ilogb(0.0) == FP_ILOGB0);
+    assert(ilogb(-0.0) == FP_ILOGB0);
+    assert(ilogb(-0.0F) == FP_ILOGB0);
+    assert(ilogb(-0.0L) == FP_ILOGB0);
+    assert(ilogb(real.infinity) == int.max);
+    assert(ilogb(-real.infinity) == int.max);
+    assert(ilogb(float.infinity) == int.max);
+    assert(ilogb(-double.infinity) == int.max);
+    assert(ilogb(2.0) == 1);
+    assert(ilogb(2.0001) == 1);
+    assert(ilogb(1.9999) == 0);
+    assert(ilogb(0.5) == -1);
+    assert(ilogb(123.123) == 6);
+    assert(ilogb(-123.123) == 6);
+    assert(ilogb(0.123) == -4);
+    assert(ilogb(-double.min_normal) == -1022);
+    assert(ilogb(-float.min_normal) == -126);
+    // subnormals
+    assert(ilogb(nextUp(-double.min_normal)) == -1023);
+    assert(ilogb(nextUp(-0.0)) == -1074);
+    assert(ilogb(nextUp(-float.min_normal)) == -127);
+    assert(ilogb(nextUp(-0.0F)) == -149);
+    static if (floatTraits!(real).realFormat == RealFormat.ieeeExtended) {
+        assert(ilogb(-real.min_normal) == -16382);
+        assert(ilogb(nextUp(-real.min_normal)) == -16383);
+        assert(ilogb(nextUp(-0.0L)) == -16445);
+    } else static if (floatTraits!(real).realFormat == RealFormat.ieeeDouble) {
+        assert(ilogb(-real.min_normal) == -1022);
+        assert(ilogb(nextUp(-real.min_normal)) == -1023);
+        assert(ilogb(nextUp(-0.0L)) == -1074);
+    }
+}
 
 /*******************************************
  * Compute n * 2$(SUPERSCRIPT exp)
@@ -4260,6 +4384,18 @@ private:
             INVALID_MASK   = 0x04
         }
     }
+    else version (AArch64)
+    {
+        // AArch64 FPSR is a 32bit register
+        enum : int
+        {
+            INEXACT_MASK   = 0x0010,
+            UNDERFLOW_MASK = 0x0008,
+            OVERFLOW_MASK  = 0x0004,
+            DIVBYZERO_MASK = 0x0002,
+            INVALID_MASK   = 0x0001
+        }
+    }
     else version (ARM)
     {
         // ARM FPSCR is a 32bit register
@@ -4308,6 +4444,10 @@ private:
             else version (ARM_SoftFloat)
             {
                 return 0;
+            }
+            else version (AArch64)
+            {
+                return __asm!uint("mrs $0, FPSR; and $0, $0, #0x1F", "=r");
             }
             else version (ARM)
             {
@@ -4370,6 +4510,12 @@ private:
             {
                 __asm("cfc1 $0, 31 ; andi $0, $0, 0xFFFFFF80 ; ctc1 $0, 31", "~r");
             }
+            else version (AArch64)
+            {
+                uint old = getIeeeFlags();
+                old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
+                __asm("msr FPSR, $0", "r", old);
+            }
             else version (ARM_SoftFloat)
             {
             }
@@ -4423,6 +4569,14 @@ public:
 }
 
 ///
+version (LDC)
+{
+    unittest
+    {
+        pragma(msg, "ieeeFlags test disabled, see LDC Issue #888");
+    }
+}
+else
 unittest
 {
     static void func() {
@@ -4458,6 +4612,10 @@ else version(PPC_Any)
     version = IeeeFlagsSupport;
 }
 else version(MIPS_Any)
+{
+    version = IeeeFlagsSupport;
+}
+else version (AArch64)
 {
     version = IeeeFlagsSupport;
 }
@@ -4531,7 +4689,17 @@ struct FloatingPointControl
     /** IEEE rounding modes.
      * The default mode is roundToNearest.
      */
-    version(ARM)
+    version(AArch64)
+    {
+        enum : RoundingMode
+        {
+            roundToNearest = 0x000000,
+            roundDown      = 0x800000,
+            roundUp        = 0x400000,
+            roundToZero    = 0xC00000
+        }
+    }
+    else version(ARM)
     {
         enum : RoundingMode
         {
@@ -4575,7 +4743,23 @@ struct FloatingPointControl
     /** IEEE hardware exceptions.
      *  By default, all exceptions are masked (disabled).
      */
-    version(ARM)
+    version(AArch64)
+    {
+        enum : uint
+        {
+            inexactException      = 0x1000,
+            underflowException    = 0x0800,
+            overflowException     = 0x0400,
+            divByZeroException    = 0x0200,
+            invalidException      = 0x0100,
+            /// Severe = The overflow, division by zero, and invalid exceptions.
+            severeExceptions   = overflowException | divByZeroException
+                                 | invalidException,
+            allExceptions      = severeExceptions | underflowException
+                                 | inexactException,
+        }
+    }
+    else version(ARM)
     {
         enum : uint
         {
@@ -4643,7 +4827,12 @@ struct FloatingPointControl
     }
 
 private:
-    version(ARM)
+    version(AArch64)
+    {
+        enum uint EXCEPTION_MASK = 0x1F00;
+        enum uint ROUNDING_MASK = 0xC00000;
+    }
+    else version(ARM)
     {
         enum uint EXCEPTION_MASK = 0x9F00;
         enum uint ROUNDING_MASK = 0xC00000;
@@ -4681,6 +4870,16 @@ public:
             return true;
         else version(MIPS_Any)
             return true;
+        else version(AArch64)
+        {
+            auto oldState = getControlState();
+            // If exceptions are not supported, we set the bit but read it back as zero
+            // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/aarch64/fpu/feenablxcpth.c
+            setControlState(oldState | (divByZeroException & EXCEPTION_MASK));
+            bool result = (getControlState() & EXCEPTION_MASK) != 0;
+            setControlState(oldState);
+            return result;
+        }
         else version(ARM)
         {
             auto oldState = getControlState();
@@ -4753,7 +4952,11 @@ private:
 
     bool initialized = false;
 
-    version(ARM)
+    version(AArch64)
+    {
+        alias ControlState = uint;
+    }
+    else version(ARM)
     {
         alias ControlState = uint;
     }
@@ -4795,6 +4998,13 @@ private:
             else version (MIPS_Any)
             {
                 __asm("cfc1 $0, 31 ; andi $0, $0, 0xFFFFF07F ; ctc1 $0, 31", "~r");
+            }
+            else version (AArch64)
+            {
+                // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/aarch64/fpu/fclrexcpt.c
+                ControlState old = getControlState();
+                old &= ~0b11111;
+                __asm("msr FPCR, $0", "r", old);
             }
             else version (ARM_SoftFloat)
             {
@@ -4842,6 +5052,10 @@ private:
             else version (MIPS_Any)
             {
                 cont = __asm("cfc1 $0, 31", "=r");
+            }
+            else version (AArch64)
+            {
+                cont = __asm!ControlState("mrs $0, FPCR", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4903,6 +5117,10 @@ private:
             else version (MIPS_Any)
             {
                 __asm("ctc1 $0, 31", "r", newState);
+            }
+            else version (AArch64)
+            {
+                __asm("msr FPCR, $0", "r", newState);
             }
             else version (ARM_SoftFloat)
             {
