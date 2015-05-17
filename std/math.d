@@ -393,6 +393,7 @@ template floatTraits(T)
     {
         // Quadruple precision float
         enum ushort EXPMASK = 0x7FFF;
+        enum ushort EXPBIAS = 0x3FFF;
         enum realFormat = RealFormat.ieeeQuadruple;
         version(LittleEndian)
         {
@@ -1519,9 +1520,11 @@ extern (C) real rndtonl(real x);
  */
 version(LDC)
 {
-    real   sqrt(real   x) @safe pure nothrow @nogc { return llvm_sqrt(x); }
-    double sqrt(double x) @safe pure nothrow @nogc { return llvm_sqrt(x); }
-    float  sqrt(float  x) @safe pure nothrow @nogc { return llvm_sqrt(x); }
+    // http://llvm.org/docs/LangRef.html#llvm-sqrt-intrinsic
+    // sqrt(x) when x is less than zero is undefined
+    real   sqrt(real   x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
+    double sqrt(double x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
+    float  sqrt(float  x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
 }
 else
 {
@@ -1542,6 +1545,10 @@ real sqrt(real x) @nogc @safe pure nothrow;      /* intrinsic */
     enum ZX80 = sqrt(7.0f);
     enum ZX81 = sqrt(7.0);
     enum ZX82 = sqrt(7.0L);
+
+    assert(isNaN(sqrt(-1.0f)));
+    assert(isNaN(sqrt(-1.0)));
+    assert(isNaN(sqrt(-1.0L)));
 }
 
 creal sqrt(creal z) @nogc @safe pure nothrow
@@ -4466,7 +4473,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                return __asm!uint("cfc1 $0, 31", "=r");
+                return __asm!uint("cfc1 $0, $$31", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4535,7 +4542,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                __asm("cfc1 $0, 31 ; andi $0, $0, 0xFFFFFF80 ; ctc1 $0, 31", "~r");
+                cast(void) __asm!uint("cfc1 $0, $$31 ; andi $0, $0, 0xFFFFFF80 ; ctc1 $0, $$31", "=r");
             }
             else version (AArch64)
             {
@@ -5024,7 +5031,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                __asm("cfc1 $0, 31 ; andi $0, $0, 0xFFFFF07F ; ctc1 $0, 31", "~r");
+                cast(void) __asm!uint("cfc1 $0, $$31 ; andi $0, $0, 0xFFFFF07F ; ctc1 $0, $$31", "=r");
             }
             else version (AArch64)
             {
@@ -5078,7 +5085,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                cont = __asm("cfc1 $0, 31", "=r");
+                cont = __asm!uint("cfc1 $0, $$31", "=r");
             }
             else version (AArch64)
             {
@@ -5143,7 +5150,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                __asm("ctc1 $0, 31", "r", newState);
+                __asm("ctc1 $0, $$31", "r", newState);
             }
             else version (AArch64)
             {
