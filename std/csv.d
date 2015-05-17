@@ -84,19 +84,6 @@ import std.conv;
 import std.range.primitives;
 import std.traits;
 
-version (WIP_FloatPrecIssue) version (unittest)
-{
-    // This may or may not be a problem.
-    pragma(msg, "std.conv.parse may diff in lsb compared to compiler literals.");
-    import std.math : xyzzyCompareFloat;
-
-    unittest
-    {
-        import std.stdio: writeln;
-        writeln("Float comparisons that differ in lsb are being allowed to pass");
-    }
-}
-
 /**
  * Exception containing the row and column for when an exception was thrown.
  *
