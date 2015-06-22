@@ -342,6 +342,7 @@ template floatTraits(T)
     {
         // Quadruple precision float
         enum ushort EXPMASK = 0x7FFF;
+        enum ushort EXPBIAS = 0x3FFF;
         enum realFormat = RealFormat.ieeeQuadruple;
         version(LittleEndian)
         {
@@ -1445,9 +1446,11 @@ extern (C) real rndtonl(real x);
  */
 version(LDC)
 {
-    real   sqrt(real   x) @safe pure nothrow @nogc { return llvm_sqrt(x); }
-    double sqrt(double x) @safe pure nothrow @nogc { return llvm_sqrt(x); }
-    float  sqrt(float  x) @safe pure nothrow @nogc { return llvm_sqrt(x); }
+    // http://llvm.org/docs/LangRef.html#llvm-sqrt-intrinsic
+    // sqrt(x) when x is less than zero is undefined
+    real   sqrt(real   x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
+    double sqrt(double x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
+    float  sqrt(float  x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
 }
 else
 {
@@ -1468,6 +1471,10 @@ unittest
     enum ZX80 = sqrt(7.0f);
     enum ZX81 = sqrt(7.0);
     enum ZX82 = sqrt(7.0L);
+
+    assert(isNaN(sqrt(-1.0f)));
+    assert(isNaN(sqrt(-1.0)));
+    assert(isNaN(sqrt(-1.0L)));
 }
 
 creal sqrt(creal z) @nogc @safe pure nothrow
@@ -4079,7 +4086,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                return __asm!uint("cfc1 $0, 31", "=r");
+                return __asm!uint("cfc1 $0, $$31", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4144,16 +4151,18 @@ private:
             }
             else version (MIPS_Any)
             {
-                __asm("cfc1 $0, 31 ; andi $0, $0, 0xFFFFFF80 ; ctc1 $0, 31", "~r");
+                cast(void) __asm!uint("cfc1 $0, $$31 ; andi $0, $0, 0xFFFFFF80 ; ctc1 $0, $$31", "=r");
             }
             else version (ARM_SoftFloat)
             {
             }
             else version (ARM)
             {
-                uint old = getIeeeFlags();
-                old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
-                __asm("vmsr FPSCR, $0", "r", old);
+                // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
+                cast(void) __asm!uint
+                    ("vmrs $0, fpscr;"
+                     "bic $0, #0x1f;"
+                     "vmsr fpscr, $0", "=r");
             }
             else
                 assert(0, "Not yet supported");
@@ -4283,10 +4292,10 @@ struct FloatingPointControl
     {
         enum : RoundingMode
         {
-            roundToNearest = 0x00000000,
-            roundUp        = 0x00400000,
-            roundDown      = 0x00800000,
-            roundToZero    = 0x00C00000
+            roundToNearest = 0x000000,
+            roundDown      = 0x800000,
+            roundUp        = 0x400000,
+            roundToZero    = 0xC00000
         }
     }
     else version(PPC_Any)
@@ -4542,7 +4551,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                __asm("cfc1 $0, 31 ; andi $0, $0, 0xFFFFF07F ; ctc1 $0, 31", "~r");
+                cast(void) __asm!uint("cfc1 $0, $$31 ; andi $0, $0, 0xFFFFF07F ; ctc1 $0, $$31", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4589,7 +4598,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                cont = __asm("cfc1 $0, 31", "=r");
+                cont = __asm!uint("cfc1 $0, $$31", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4650,7 +4659,7 @@ private:
             }
             else version (MIPS_Any)
             {
-                __asm("ctc1 $0, 31", "r", newState);
+                __asm("ctc1 $0, $$31", "r", newState);
             }
             else version (ARM_SoftFloat)
             {
