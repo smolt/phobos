@@ -85,13 +85,6 @@ version (IPhoneOS) version (unittest)
     version = IPhoneOSTest;
     import xyzzy = ldc.xyzzy;
 
-    version (WIP_FloatOptimizeIssue) unittest
-    {
-        import std.stdio: writeln;
-        pragma(msg, "There are floating point issues when optimization enabled");
-        writeln("Some floating point errors when optimization enabled");
-    }
-        
     version (WIP_FloatPrecIssue) unittest
     {
         import std.stdio: writeln;
@@ -1305,19 +1298,10 @@ float acosh(float x) @safe pure nothrow @nogc  { return acosh(cast(real)x); }
 
 unittest
 {
-    version (WIP_FloatOptimizeIssue) {
-        mixin xyzzy.testhelp;
-        // fails only when optimizing because compiler generates -0.105361
-        testTrue!q{isNaN(acosh(0.9))} || showExpr!q{acosh(0.9)};
-    } else
     assert(isNaN(acosh(0.9)));
     assert(isNaN(acosh(real.nan)));
     assert(acosh(1.0)==0.0);
     assert(acosh(real.infinity) == real.infinity);
-    version (WIP_FloatOptimizeIssue) {
-        // fails only when optimizing because compiler generates -0.693147
-        testTrue!q{isNaN(acosh(0.5))} ||showExpr!q{acosh(0.5)};
-    } else
     assert(isNaN(acosh(0.5)));
     assert(equalsDigit(acosh(cosh(3.0)), 3, useDigits));
 }
