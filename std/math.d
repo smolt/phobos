@@ -2195,7 +2195,7 @@ unittest
     {
         resetIeeeFlags();
         x = exp(exptestpoints[i][0]);
-        f = ieeeFlags;
+        f = ieeeFlags(x);
         version (WIP_FloatPrecIssue) {
             // Sometimes has lsb difference.  Not sure if I'd call it an error
             // but need more work
@@ -2223,13 +2223,13 @@ unittest
     // NaN propagation. Doesn't set flags, bcos was already NaN.
     resetIeeeFlags();
     x = exp(real.nan);
-    f = ieeeFlags;
+    f = ieeeFlags(x);
     assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
     resetIeeeFlags();
     x = exp(-real.nan);
-    f = ieeeFlags;
+    f = ieeeFlags(x);
     assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
@@ -4214,6 +4214,35 @@ public:
 
      }
 }
+
+unittest
+{
+    // use a variable to prevent optimizing the float optimizers away.
+    static real zero = 0.0;
+    static void func() {
+        int a = 10 * 10;
+    }
+
+    real a=3.5;
+    // Set all the flags to zero
+    resetIeeeFlags();
+    assert(!ieeeFlags.divByZero);
+    // Perform a division by zero.
+    a/=zero;
+    assert(a==real.infinity);
+    assert(ieeeFlags(a).divByZero);
+    // Create a NaN
+    a*=zero;
+    assert(ieeeFlags(a).invalid);
+    assert(isNaN(a));
+
+    // Check that calling func() has no effect on the
+    // status flags.
+    IeeeFlags f = ieeeFlags;
+    func();
+    assert(ieeeFlags == f);
+}
+
 version(X86_Any)
 {
     version = IeeeFlagsSupport;
@@ -4238,6 +4267,16 @@ void resetIeeeFlags() { IeeeFlags.resetIeeeFlags(); }
 @property IeeeFlags ieeeFlags()
 {
    return IeeeFlags(IeeeFlags.getIeeeFlags());
+}
+
+/// Return a snapshot of the current state of the floating-point status flags.
+/// This version forces a dependency on arg x to prevent optimizer from
+/// fetching the flags before x is computed.
+@property IeeeFlags ieeeFlags(T)(T x)
+{
+    import core.stdc.fenv;
+    FORCE_EVAL(x);
+    return IeeeFlags(IeeeFlags.getIeeeFlags());
 }
 
 /** Control the Floating point hardware
