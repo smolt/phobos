@@ -79,9 +79,10 @@ version (Win64)
 import core.stdc.math;
 import std.traits;
 
-version (IPhoneOS) version (unittest)
+version (IPhoneOS) version (ARM) version (unittest)
 {
-    // For ease in selecting alternate tests for iOS
+    // For ease in selecting alternate tests for iOS when running on a
+    // device.
     version = IPhoneOSTest;
     import xyzzy = ldc.xyzzy;
 
