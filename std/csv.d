@@ -486,6 +486,8 @@ unittest
 // Test structure conversion interface with unicode.
 unittest
 {
+    import std.math : abs;
+
     wstring str = "\U00010143Hello,65,63.63\nWorld,123,3673.562"w;
     struct Layout
     {
@@ -509,13 +511,7 @@ unittest
     {
         assert(ans[count].name == record.name);
         assert(ans[count].value == record.value);
-        // Sometimes has lsb difference.  Not sure if I'd call it an error
-        // but need more work
-        version (WIP_FloatPrecIssue)
-            assert(xyzzyCompareFloat(ans[count].other, record.other));
-        else
-        assert(ans[count].other == record.other);
-
+        assert(abs(ans[count].other - record.other) < 0.00001);
         count++;
     }
     assert(count == ans.length);
@@ -537,6 +533,8 @@ unittest
 // Test struct & header interface and same unicode
 unittest
 {
+    import std.math : abs;
+
     string str = "a,b,c\nHello,65,63.63\n➊➋➂❹,123,3673.562";
     struct Layout
     {
@@ -560,12 +558,7 @@ unittest
     {
         assert(ans[count].name == record.name);
         assert(ans[count].value == record.value);
-        // Sometimes has lsb difference.  Not sure if I'd call it an error
-        // but need more work
-        version (WIP_FloatPrecIssue)
-            assert(xyzzyCompareFloat(ans[count].other, record.other));
-        else
-        assert(ans[count].other == record.other);
+        assert(abs(ans[count].other - record.other) < 0.00001);
         count++;
     }
     assert(count == ans.length);
