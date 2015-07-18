@@ -130,48 +130,11 @@ version (Win64)
 import core.stdc.math;
 import std.traits;
 
-version (IPhoneOS) version (unittest)
+version (IPhoneOS) version (ARM) version (unittest)
 {
-    // For ease in selecting alternate tests for iOS
+    // For ease in selecting alternate tests for iOS when running on a
+    // device.
     version = IPhoneOSTest;
-    import xyzzy = ldc.xyzzy;
-
-    version (WIP_FloatOptimizeIssue) unittest
-    {
-        import std.stdio: writeln;
-        pragma(msg, "There are floating point issues when optimization enabled");
-        writeln("Some floating point errors when optimization enabled");
-    }
-        
-    version (WIP_FloatPrecIssue) unittest
-    {
-        import std.stdio: writeln;
-        pragma(msg, "There are tests with floating point precision errors");
-        writeln("Float comparisons that differ in lsb are being allowed to pass");
-    }
-
-    // compare but allow difference in lsb
-    bool xyzzyCompareFloat(T, string file = __FILE__, size_t line = __LINE__)
-        (T a, T b) if (isFloatingPoint!T)
-    {
-        import std.stdio : writefln, writeln;
-        int d = feqrel(a, b);
-        if (d < T.mant_dig)
-        {
-            writefln("%s(%u): match %d out of %d bits",
-                     file, line, d, T.mant_dig);
-            writefln("%g == %g", a, b);
-            writefln("%a == %a", a, b);
-            if (d < T.mant_dig - 1)
-            {
-                // if more than one bit mismatch, don't pass it!
-                writeln("too much of a mismatch");
-                return false;
-            }
-            ldc.xyzzy.skipTest();
-        }
-        return true;
-    }
 }
 
 version(LDC)
@@ -1386,19 +1349,10 @@ float acosh(float x) @safe pure nothrow @nogc  { return acosh(cast(real)x); }
 
 unittest
 {
-    version (WIP_FloatOptimizeIssue) {
-        mixin xyzzy.testhelp;
-        // fails only when optimizing because compiler generates -0.105361
-        testTrue!q{isNaN(acosh(0.9))} || showExpr!q{acosh(0.9)};
-    } else
     assert(isNaN(acosh(0.9)));
     assert(isNaN(acosh(real.nan)));
     assert(acosh(1.0)==0.0);
     assert(acosh(real.infinity) == real.infinity);
-    version (WIP_FloatOptimizeIssue) {
-        // fails only when optimizing because compiler generates -0.693147
-        testTrue!q{isNaN(acosh(0.5))} ||showExpr!q{acosh(0.5)};
-    } else
     assert(isNaN(acosh(0.5)));
     assert(equalsDigit(acosh(cosh(3.0)), 3, useDigits));
 }
@@ -2271,9 +2225,6 @@ unittest
     real x;
     IeeeFlags f;
 
-    // TODO-xyzzy: backmerge this change into ios branch, revert ios-merge-2.067
-    // back to delme tag (remove kinke's other changes) and then merge in ios
-    // again.
     // TODO: could make a general flush subnormals version.
 
     // Expected value - handle subnormals for some platforms
@@ -2284,12 +2235,12 @@ unittest
         else
             return x;
     }
-    
+
     foreach (ref pair; exptestpoints)
     {
         resetIeeeFlags();
         x = exp(pair[0]);
-        f = ieeeFlags;
+        f = ieeeFlags(x);
         assert(feqrel(x, expect(pair[1])) >= minEqualMantissaBits);
 
         version (IeeeFlagsSupport)
@@ -2324,13 +2275,13 @@ unittest
     // NaN propagation. Doesn't set flags, bcos was already NaN.
     resetIeeeFlags();
     x = exp(real.nan);
-    f = ieeeFlags;
+    f = ieeeFlags(x);
     assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
     resetIeeeFlags();
     x = exp(-real.nan);
-    f = ieeeFlags;
+    f = ieeeFlags(x);
     assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
@@ -4607,17 +4558,10 @@ public:
      }
 }
 
-///
-version (LDC)
-{
-    unittest
-    {
-        pragma(msg, "ieeeFlags test disabled, see LDC Issue #888");
-    }
-}
-else
 unittest
 {
+    // use a variable to prevent optimizing the float optimizers away.
+    static real zero = 0.0;
     static void func() {
         int a = 10 * 10;
     }
@@ -4627,12 +4571,12 @@ unittest
     resetIeeeFlags();
     assert(!ieeeFlags.divByZero);
     // Perform a division by zero.
-    a/=0.0L;
+    a/=zero;
     assert(a==real.infinity);
-    assert(ieeeFlags.divByZero);
+    assert(ieeeFlags(a).divByZero);
     // Create a NaN
-    a*=0.0L;
-    assert(ieeeFlags.invalid);
+    a*=zero;
+    assert(ieeeFlags(a).invalid);
     assert(isNaN(a));
 
     // Check that calling func() has no effect on the
@@ -4670,6 +4614,16 @@ void resetIeeeFlags() { IeeeFlags.resetIeeeFlags(); }
 @property IeeeFlags ieeeFlags()
 {
    return IeeeFlags(IeeeFlags.getIeeeFlags());
+}
+
+/// Return a snapshot of the current state of the floating-point status flags.
+/// This version forces a dependency on arg x to prevent optimizer from
+/// fetching the flags before x is computed.
+@property IeeeFlags ieeeFlags(T)(T x)
+{
+    import core.stdc.fenv;
+    FORCE_EVAL(x);
+    return IeeeFlags(IeeeFlags.getIeeeFlags());
 }
 
 /** Control the Floating point hardware
@@ -5854,6 +5808,15 @@ pure nothrow @nogc unittest
         assert(xl & 0x8_0000_0000_0000UL); //non-signaling bit, bit 52
         assert((xl & 0x7FF0_0000_0000_0000UL) == 0x7FF0_0000_0000_0000UL); //all exp bits set
     }
+}
+
+/**
+ * Returns: true if x isNaN with payload
+ */
+bool isNaNWithPayload(real x, ulong payload) @safe pure nothrow @nogc
+{
+    real other = copysign(NaN(payload), x);
+    return isIdentical(x, other);
 }
 
 /**
