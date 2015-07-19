@@ -27,6 +27,11 @@
 #endif
 #include <fcntl.h>
 
+// Really only needed for x86_64 iOS Simulator SDK, not sure why it is special
+#ifdef __APPLE__
+#  include <unistd.h>
+#endif
+
 #ifdef _WIN32
 #  include <stddef.h>
 #endif
