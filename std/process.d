@@ -893,6 +893,7 @@ unittest // Specifying a bad working directory.
     assertThrown!ProcessException(spawnProcess([prog.path], null, Config.none, directory));
 }
 
+version (SkipTest) {} else
 unittest // Specifying empty working directory.
 {
     TestScript prog = "";
@@ -902,6 +903,7 @@ unittest // Specifying empty working directory.
     spawnProcess([prog.path], null, Config.none, directory).wait();
 }
 
+version (SkipTest) {} else
 unittest // Reopening the standard streams (issue 13258)
 {
     import std.string;
