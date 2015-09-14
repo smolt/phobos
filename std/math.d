@@ -4115,7 +4115,7 @@ private:
             }
             else version (AArch64)
             {
-                return __asm!uint("mrs $0, FPSR; and $0, $0, #0x1F", "=r");
+                return __asm!uint("mrs $0, FPSR\n and $0, $0, #0x1F", "=r");
             }
             else version (ARM)
             {
@@ -4180,9 +4180,10 @@ private:
             }
             else version (AArch64)
             {
-                uint old = getIeeeFlags();
-                old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
-                __asm("msr FPSR, $0", "r", old);
+                cast(void)__asm!uint
+                    ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
+                     "and $0, $0, #~0x1f\n"
+                     "msr fpsr, $0", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4674,10 +4675,10 @@ private:
             }
             else version (AArch64)
             {
-                // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/aarch64/fpu/fclrexcpt.c
-                ControlState old = getControlState();
-                old &= ~0b11111;
-                __asm("msr FPCR, $0", "r", old);
+                cast(void)__asm!uint
+                    ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
+                     "and $0, $0, #~0x1f\n"
+                     "msr fpsr, $0", "=r");
             }
             else version (ARM_SoftFloat)
             {
