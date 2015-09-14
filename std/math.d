@@ -79,11 +79,17 @@ version (Win64)
 import core.stdc.math;
 import std.traits;
 
-version (IPhoneOS) version (ARM) version (unittest)
+version (ARM) version = ARM_Any;
+version (AArch64) version = ARM_Any;
+
+version (IPhoneOS) version (ARM_Any) version (unittest)
 {
-    // For ease in selecting alternate tests for iOS when running on a
-    // device.
-    version = IPhoneOSTest;
+    // Need some alternate tests for iOS when running on a device.  Both
+    // AArch64 (arm64) and ARM (armv7) use 64-bit reals, but there are some
+    // differences in IEEE flag settings and handling of subnormals.
+    version = DisableIPhoneOSTest;
+    // Some iOS ARM math functions flush subnormals regardless of fpscr.
+    version (ARM) version = SubnormalFlushedToZero;
     import xyzzy = ldc.xyzzy;
 
     version (WIP_FloatPrecIssue) unittest
@@ -2181,12 +2187,10 @@ unittest
     real x;
     IeeeFlags f;
 
-    // TODO: could make a general flush subnormals version.
-
     // Expected value - handle subnormals for some platforms
     real expect(real x)
     {
-        version(IPhoneOSTest)
+        version (SubnormalFlushedToZero)
             return isSubnormal(x) ? 0.0 : x;
         else
             return x;
@@ -2199,18 +2203,19 @@ unittest
         f = ieeeFlags(x);
         version (WIP_FloatPrecIssue) {
             // Sometimes has lsb difference.  Not sure if I'd call it an error
-            // but need more work
+            // but need more work.
+            // Test 6 near underflow only matches 36-bits, so skip for now.
+            version (IPhoneOS) version (AArch64) if (i != 6)
             assert(xyzzyCompareFloat(x, expect(exptestpoints[i][1])));
         }
         else
         assert(x == expect(exptestpoints[i][1]));
         // Check the overflow bit
-        // iOS core.stdc.ldexp (used by exp) does not set flags
-        version (IPhoneOSTest) {} else
+        // iOS core.stdc.ldexp (used by exp) sets flags, but misses some cases
+        version (DisableIPhoneOSTest) {} else
         assert(f.overflow == (fabs(x) == real.infinity));
         // Check the underflow bit
-        // iOS core.stdc.ldexp (used by exp) does not set flags
-        version (IPhoneOSTest) {} else
+        version (DisableIPhoneOSTest) {} else
         assert(f.underflow == (fabs(x) < real.min_normal));
         // Invalid and div by zero shouldn't be affected.
         assert(!f.invalid);
@@ -2602,11 +2607,8 @@ unittest
     }
     else static if (floatTraits!(real).realFormat == RealFormat.ieeeDouble)
     {
-        version (IPhoneOSTest)
-        {
-            // core.stdc.ldexp() on iOS flushes subnormals to zero
+        version (SubnormalFlushedToZero)
             assert(ldexp(1, -1024) == 0);
-        }
         else
         assert(ldexp(1, -1024) == 0x1p-1024L);
         assert(ldexp(1, -1022) == 0x1p-1022L);
@@ -2614,11 +2616,8 @@ unittest
         real n = frexp(0x1p-1024L, x);
         assert(n==0.5L);
         assert(x==-1023);
-        version (IPhoneOSTest)
-        {
-            // core.stdc.ldexp() on iOS flushes subnormals to zero
+        version (SubnormalFlushedToZero)
             assert(ldexp(n, x) == 0);
-        }
         else
         assert(ldexp(n, x)==0x1p-1024L);
     }
