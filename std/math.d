@@ -132,9 +132,8 @@ import std.traits;
 
 version (IPhoneOS) version (ARM) version (unittest)
 {
-    // For ease in selecting alternate tests for iOS when running on a
-    // device.
-    version = IPhoneOSTest;
+    // Some iOS ARM math functions flush subnormals regardless of fpscr.
+    version = SubnormalFlushedToZero;
 }
 
 version(LDC)
@@ -2225,12 +2224,10 @@ unittest
     real x;
     IeeeFlags f;
 
-    // TODO: could make a general flush subnormals version.
-
     // Expected value - handle subnormals for some platforms
     real expect(real x)
     {
-        version(IPhoneOSTest)
+        version (SubnormalFlushedToZero)
             return isSubnormal(x) ? 0.0 : x;
         else
             return x;
@@ -2891,11 +2888,8 @@ real ldexp(real n, int exp) @nogc @safe pure nothrow;    /* intrinsic */
     }
     else static if (floatTraits!(real).realFormat == RealFormat.ieeeDouble)
     {
-        version (IPhoneOSTest)
-        {
-            // core.stdc.ldexp() on iOS flushes subnormals to zero
+        version (SubnormalFlushedToZero)
             assert(ldexp(1, -1024) == 0);
-        }
         else
         assert(ldexp(1, -1024) == 0x1p-1024L);
         assert(ldexp(1, -1022) == 0x1p-1022L);
@@ -2903,11 +2897,8 @@ real ldexp(real n, int exp) @nogc @safe pure nothrow;    /* intrinsic */
         real n = frexp(0x1p-1024L, x);
         assert(n==0.5L);
         assert(x==-1023);
-        version (IPhoneOSTest)
-        {
-            // core.stdc.ldexp() on iOS flushes subnormals to zero
+        version (SubnormalFlushedToZero)
             assert(ldexp(n, x) == 0);
-        }
         else
         assert(ldexp(n, x)==0x1p-1024L);
     }
@@ -4435,7 +4426,7 @@ private:
             }
             else version (AArch64)
             {
-                return __asm!uint("mrs $0, FPSR; and $0, $0, #0x1F", "=r");
+                return __asm!uint("mrs $0, FPSR\n and $0, $0, #0x1F", "=r");
             }
             else version (ARM)
             {
@@ -4500,9 +4491,10 @@ private:
             }
             else version (AArch64)
             {
-                uint old = getIeeeFlags();
-                old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
-                __asm("msr FPSR, $0", "r", old);
+                cast(void)__asm!uint
+                    ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
+                     "and $0, $0, #~0x1f\n"
+                     "msr fpsr, $0", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4994,10 +4986,10 @@ private:
             }
             else version (AArch64)
             {
-                // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/aarch64/fpu/fclrexcpt.c
-                ControlState old = getControlState();
-                old &= ~0b11111;
-                __asm("msr FPCR, $0", "r", old);
+                cast(void)__asm!uint
+                    ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
+                     "and $0, $0, #~0x1f\n"
+                     "msr fpsr, $0", "=r");
             }
             else version (ARM_SoftFloat)
             {
