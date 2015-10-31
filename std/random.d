@@ -2732,6 +2732,9 @@ auto randomSample(Range, UniformRNG)(Range r, size_t n, auto ref UniformRNG rng)
     return RandomSample!(Range, UniformRNG)(r, n, r.length, rng);
 }
 
+// LDC Note: This test may fail with ARM optimizer and +neon instructions with
+// an vst1.64 unaligned access.  In meantime, compile with -neon until problem
+// is solved.
 unittest
 {
     import std.exception;

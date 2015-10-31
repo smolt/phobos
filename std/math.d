@@ -130,6 +130,12 @@ version (Win64)
 import core.stdc.math;
 import std.traits;
 
+version (IPhoneOS) version (ARM) version (unittest)
+{
+    // Some iOS ARM math functions flush subnormals regardless of fpscr.
+    version = SubnormalFlushedToZero;
+}
+
 version(LDC)
 {
     import ldc.intrinsics;
@@ -553,7 +559,8 @@ real abs(Num)(Num y) @safe pure nothrow @nogc
     assert(abs(71.6Li) == 71.6L);
     assert(abs(-56) == 56);
     assert(abs(2321312L)  == 2321312L);
-    version(LDC) {} else // FIXME:
+    // This works for IPhoneOS
+    //version(LDC) {} else // FIXME:
     assert(abs(-1+1i) == sqrt(2.0L));
 }
 
@@ -2216,12 +2223,22 @@ unittest
     const minEqualMantissaBits = real.mant_dig - 2;
     real x;
     IeeeFlags f;
+
+    // Expected value - handle subnormals for some platforms
+    real expect(real x)
+    {
+        version (SubnormalFlushedToZero)
+            return isSubnormal(x) ? 0.0 : x;
+        else
+            return x;
+    }
+
     foreach (ref pair; exptestpoints)
     {
         resetIeeeFlags();
         x = exp(pair[0]);
-        f = ieeeFlags;
-        assert(feqrel(x, pair[1]) >= minEqualMantissaBits);
+        f = ieeeFlags(x);
+        assert(feqrel(x, expect(pair[1])) >= minEqualMantissaBits);
 
         version (IeeeFlagsSupport)
         {
@@ -2255,13 +2272,13 @@ unittest
     // NaN propagation. Doesn't set flags, bcos was already NaN.
     resetIeeeFlags();
     x = exp(real.nan);
-    f = ieeeFlags;
+    f = ieeeFlags(x);
     assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
     resetIeeeFlags();
     x = exp(-real.nan);
-    f = ieeeFlags;
+    f = ieeeFlags(x);
     assert(isIdentical(abs(x), real.nan));
     assert(f.flags == 0);
 
@@ -2871,12 +2888,18 @@ real ldexp(real n, int exp) @nogc @safe pure nothrow;    /* intrinsic */
     }
     else static if (floatTraits!(real).realFormat == RealFormat.ieeeDouble)
     {
+        version (SubnormalFlushedToZero)
+            assert(ldexp(1, -1024) == 0);
+        else
         assert(ldexp(1, -1024) == 0x1p-1024L);
         assert(ldexp(1, -1022) == 0x1p-1022L);
         int x;
         real n = frexp(0x1p-1024L, x);
         assert(n==0.5L);
         assert(x==-1023);
+        version (SubnormalFlushedToZero)
+            assert(ldexp(n, x) == 0);
+        else
         assert(ldexp(n, x)==0x1p-1024L);
     }
     else static assert(false, "Floating point type real not supported");
@@ -4403,7 +4426,7 @@ private:
             }
             else version (AArch64)
             {
-                return __asm!uint("mrs $0, FPSR; and $0, $0, #0x1F", "=r");
+                return __asm!uint("mrs $0, FPSR\n and $0, $0, #0x1F", "=r");
             }
             else version (ARM)
             {
@@ -4468,9 +4491,10 @@ private:
             }
             else version (AArch64)
             {
-                uint old = getIeeeFlags();
-                old &= ~0b11111; // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0408i/Chdfifdc.html
-                __asm("msr FPSR, $0", "r", old);
+                cast(void)__asm!uint
+                    ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
+                     "and $0, $0, #~0x1f\n"
+                     "msr fpsr, $0", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -4526,17 +4550,10 @@ public:
      }
 }
 
-///
-version (LDC)
-{
-    unittest
-    {
-        pragma(msg, "ieeeFlags test disabled, see LDC Issue #888");
-    }
-}
-else
 unittest
 {
+    // use a variable to prevent optimizing the float optimizers away.
+    static real zero = 0.0;
     static void func() {
         int a = 10 * 10;
     }
@@ -4546,12 +4563,12 @@ unittest
     resetIeeeFlags();
     assert(!ieeeFlags.divByZero);
     // Perform a division by zero.
-    a/=0.0L;
+    a/=zero;
     assert(a==real.infinity);
-    assert(ieeeFlags.divByZero);
+    assert(ieeeFlags(a).divByZero);
     // Create a NaN
-    a*=0.0L;
-    assert(ieeeFlags.invalid);
+    a*=zero;
+    assert(ieeeFlags(a).invalid);
     assert(isNaN(a));
 
     // Check that calling func() has no effect on the
@@ -4589,6 +4606,16 @@ void resetIeeeFlags() { IeeeFlags.resetIeeeFlags(); }
 @property IeeeFlags ieeeFlags()
 {
    return IeeeFlags(IeeeFlags.getIeeeFlags());
+}
+
+/// Return a snapshot of the current state of the floating-point status flags.
+/// This version forces a dependency on arg x to prevent optimizer from
+/// fetching the flags before x is computed.
+@property IeeeFlags ieeeFlags(T)(T x)
+{
+    import core.stdc.fenv;
+    FORCE_EVAL(x);
+    return IeeeFlags(IeeeFlags.getIeeeFlags());
 }
 
 /** Control the Floating point hardware
@@ -4959,10 +4986,10 @@ private:
             }
             else version (AArch64)
             {
-                // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/aarch64/fpu/fclrexcpt.c
-                ControlState old = getControlState();
-                old &= ~0b11111;
-                __asm("msr FPCR, $0", "r", old);
+                cast(void)__asm!uint
+                    ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
+                     "and $0, $0, #~0x1f\n"
+                     "msr fpsr, $0", "=r");
             }
             else version (ARM_SoftFloat)
             {
@@ -5776,6 +5803,15 @@ pure nothrow @nogc unittest
 }
 
 /**
+ * Returns: true if x isNaN with payload
+ */
+bool isNaNWithPayload(real x, ulong payload) @safe pure nothrow @nogc
+{
+    real other = copysign(NaN(payload), x);
+    return isIdentical(x, other);
+}
+
+/**
  * Extract an integral payload from a $(NAN).
  *
  * Returns:
@@ -6419,7 +6455,10 @@ real pow(I, F)(I x, F y) @nogc @trusted pure nothrow
  *      $(TD no)        $(TD no) )
  * )
  */
-version(none)
+//version (none)
+// For iOS, the LLVM pow intrinsic passes unittests, alternate does not when
+// optimzing, probably because of CTFE.
+version(LDC)
 {   // FIXME: Use of this LLVM intrinsic causes a unit test failure
     Unqual!(Largest!(F, G)) pow(F, G)(F x, G y) @safe pure nothrow @nogc
         if (isFloatingPoint!(F) && isFloatingPoint!(G))
