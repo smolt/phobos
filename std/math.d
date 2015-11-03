@@ -130,7 +130,7 @@ version (Win64)
 import core.stdc.math;
 import std.traits;
 
-version (IPhoneOS) version (ARM) version (unittest)
+version (iOS) version (ARM) version (unittest)
 {
     // Some iOS ARM math functions flush subnormals regardless of fpscr.
     version = SubnormalFlushedToZero;
@@ -559,7 +559,7 @@ real abs(Num)(Num y) @safe pure nothrow @nogc
     assert(abs(71.6Li) == 71.6L);
     assert(abs(-56) == 56);
     assert(abs(2321312L)  == 2321312L);
-    // This works for IPhoneOS
+    // This works for iOS
     //version(LDC) {} else // FIXME:
     assert(abs(-1+1i) == sqrt(2.0L));
 }

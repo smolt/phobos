@@ -1231,7 +1231,7 @@ Removes the lock over the specified file segment.
 
         // Since locks are per-process, we cannot test lock failures within
         // the same process. fork() is used to create a second process.
-        version (IPhoneOS)
+        version(iOS)
         {
             pragma(msg, "fork does not work on normal iOS");
             // this kind of file locking doesn't really make sense in iOS

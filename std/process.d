@@ -713,7 +713,7 @@ private bool isExecutable(in char[] path) @trusted nothrow @nogc //TODO: @safe
     return (access(path.tempCString(), X_OK) == 0);
 }
 
-version (IPhoneOS)
+version (iOS)
 {
     // iOS has Posix syscalls, but many like fork() return -1.  This module
     // compiles fine and is valid, but certain unittests will fail as a normal

@@ -2645,7 +2645,7 @@ version(Posix) unittest
     // system won't work on iOS
     // Note: this test isn't valid anyway because return value of
     // std.process.system is not checked and if fails, test still passes
-    version (IPhoneOS) {} else {
+    version (iOS) {} else {
     d = deleteme~"/a/b/c/d/e/f/g";
     mkdirRecurse(d);
     version(Android) string link_cmd = "ln -s ";
