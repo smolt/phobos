@@ -2040,6 +2040,11 @@ static if (is(sockaddr_un))
         immutable ubyte[] data = [1, 2, 3, 4];
         Socket[2] pair;
 
+        // iOS tempDir is in the App sandbox and becomes too long of a path
+        // for unix family socket tests, so use something shorter.
+        version (iOS)
+            auto name = std.file.deleteme ~ "sock";
+        else
         auto name = std.file.deleteme ~ "-unix-socket";
         auto address = new UnixAddress(name);
 
