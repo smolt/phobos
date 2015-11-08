@@ -22,19 +22,14 @@ module std.internal.math.gammafunction;
 import std.internal.math.errorfunction;
 import std.math;
 
-static if (real.mant_dig <= 53)
+// Until reason for these unittest differences are are resolved, just warn
+// that there is some work to do.
+version (WIP_FloatPrecIssue) unittest
 {
-    pragma(msg, "This module needs work for 64-bit (or smaller) reals.  "
-           "Use at you own risk");
-
-    // Have to do all this up here because below is pure-land
-    version (WIP_FloatPrecIssue) unittest
-    {
-        import ldc.xyzzy; failedTest();
-        import std.stdio: writeln;
-        writeln("\nTrying as much of unittest as possible, but much is being skipped\n"
-                "since this module needs work for 64-bit (or smaller) reals");
-    }
+    // precision is close, probably can claim success
+    //import ldc.xyzzy; failedTest();
+    import std.stdio: writeln;
+    writeln("\nSome unittests have the precision bar lowered");
 }
 
 pure:
@@ -384,8 +379,6 @@ unittest {
         if (i<14) assert(gamma(i*1.0L) == fact);
         assert(feqrel(gamma(i*1.0L), fact) >= real.mant_dig-15);
         fact *= (i*1.0L);
-        // FAIL: gamma goes to inf for rest of these with 64-bit real
-        version (WIP_FloatPrecIssue) if (i >= 143) break;
     }
     assert(gamma(0.0) == real.infinity);
     assert(gamma(-0.0) == -real.infinity);
@@ -396,8 +389,6 @@ unittest {
     assert(gamma(real.max) == real.infinity);
     assert(isNaN(gamma(-real.infinity)));
     assert(gamma(real.min_normal*real.epsilon) == real.infinity);
-    version (WIP_FloatPrecIssue) {} else
-    // FAIL: MAXGAMMA is too big for 64-bit real
     assert(gamma(MAXGAMMA)< real.infinity);
     assert(gamma(MAXGAMMA*2) == real.infinity);
 
@@ -558,14 +549,12 @@ unittest {
     }
     version (WIP_FloatPrecIssue)
     {
-        // Tiny fail: only off by lsb from original test
+        // Tiny fail: only off by ulp from original test for armv7 and arm64
         assert(feqrel(logGamma(-50.2), log(fabs(gamma(-50.2)))) >= real.mant_dig-1);
     } else
     assert(logGamma(-50.2) == log(fabs(gamma(-50.2))));
     assert(logGamma(-0.008) == log(fabs(gamma(-0.008))));
     assert(feqrel(logGamma(-38.8),log(fabs(gamma(-38.8)))) > real.mant_dig-4);
-    version (WIP_FloatPrecIssue) {} else
-    // FAIL: logGamma 9467.09 but log(gamma) nan, because gamma is nan
     static if (real.mant_dig >= 64) // incl. 80-bit reals
         assert(feqrel(logGamma(1500.0L),log(gamma(1500.0L))) > real.mant_dig-2);
     else static if (real.mant_dig >= 53) // incl. 64-bit reals
@@ -961,8 +950,6 @@ unittest { // also tested by the normal distribution
     assert(feqrel(betaIncomplete(0.0001, 10000, 0.0001), 0.999978059362107134278786L) >= real.mant_dig - 18);
     assert(betaIncomplete(0.01, 327726.7, 0.545113) == 1.0);
     assert(feqrel(betaIncompleteInv(8, 10, 0.010_934_315_234_099_2L), 0.2L) >= real.mant_dig - 2);
-    version (WIP_FloatPrecIssue) {} else
-    // FAIL: getting a nan on this one
     assert(feqrel(betaIncomplete(0.01, 498.437, 0.0121433), 0.99999664562033077636065L) >= real.mant_dig - 1);
     assert(feqrel(betaIncompleteInv(5, 10, 0.2000002972865658842), 0.229121208190918L) >= real.mant_dig - 3);
     assert(feqrel(betaIncompleteInv(4, 7, 0.8000002209179505L), 0.483657360076904L) >= real.mant_dig - 3);
