@@ -45,11 +45,6 @@ else
 package @property string deleteme() @safe
 {
     import std.process : thisProcessID;
-    // iOS tempDir is in the App sandbox and becomes too long of a path for
-    // unix family socket tests, so use something shorter.
-    version (iOS)
-        static _deleteme = "delme";
-    else
     static _deleteme = "deleteme.dmd.unittest.pid";
     static _first = true;
 
