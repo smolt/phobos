@@ -572,8 +572,7 @@ auto abs(Num)(Num y) @safe pure nothrow @nogc
     assert(abs(-56) == 56);
     assert(abs(2321312L)  == 2321312L);
     // This works for iOS
-    //version(LDC) {} else // FIXME:
-    version(LDC) {} else // LDC_FIXME
+    //version(LDC) {} else // LDC_FIXME
     assert(abs(-1L+1i) == sqrt(2.0L));
 }
 
