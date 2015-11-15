@@ -4686,6 +4686,7 @@ private:
             }
             else version (AArch64)
             {
+                // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0502f/CIHHDCHB.html
                 cast(void)__asm!uint
                     ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
                      "and $0, $0, #~0x1f\n"
@@ -5052,6 +5053,7 @@ public:
             return true;
         else version(AArch64)
         {
+            // TODO: not so sure this is correct
             auto oldState = getControlState();
             // If exceptions are not supported, we set the bit but read it back as zero
             // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/aarch64/fpu/feenablxcpth.c
@@ -5181,6 +5183,7 @@ private:
             }
             else version (AArch64)
             {
+                // http://infocenter.arm.com/help/topic/com.arm.doc.ddi0502f/CIHHDCHB.html
                 cast(void)__asm!uint
                     ("mrs $0, fpsr\n"        // use '\n' as ';' is a comment
                      "and $0, $0, #~0x1f\n"
