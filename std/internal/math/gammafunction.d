@@ -1681,6 +1681,7 @@ unittest {
         tuple(1017.644138623741168814449776695062817947092468536L, 1.0L/1024),
     ];
 
+/+ TODO: can delete this
     // Really only need bar lowered for case 1 with expected result 4.159...
     // Actual result on iOS armv7/arm64 matches 50 bits out of 53 bits
     //   actual   0x1.0a333fd8b688p+2
@@ -1692,9 +1693,9 @@ unittest {
         real maxRelDiff = 1e-14;
     else
         real maxRelDiff = 1e-15;
-
++/
     foreach (test; testData)
-        assert(approxEqual(logmdigammaInverse(test[0]), test[1], maxRelDiff, 0));
+        assert(approxEqual(logmdigammaInverse(test[0]), test[1], 2e-15, 0));
 
     assert(approxEqual(logmdigamma(logmdigammaInverse(1)), 1, 1e-15, 0));
     assert(approxEqual(logmdigamma(logmdigammaInverse(real.min_normal)), real.min_normal, 1e-15, 0));
