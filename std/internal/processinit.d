@@ -11,7 +11,10 @@
   +/
 module std.internal.processinit;
 
-version(OSX)
+version (OSX) version = Darwin;
+version (iOS) version = Darwin;
+
+version(Darwin)
 {
     extern(C) void std_process_shared_static_this();
 

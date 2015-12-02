@@ -93,6 +93,9 @@ version (Posix)
     import core.sys.posix.stdio;
     import core.sys.posix.unistd;
     import core.sys.posix.sys.wait;
+
+    version (OSX) version = Darwin;
+    version (iOS) version = Darwin;
 }
 version (Windows)
 {
@@ -138,7 +141,7 @@ version (Windows)
 // POSIX API declarations.
 version (Posix)
 {
-    version (OSX)
+    version (Darwin)
     {
         extern(C) char*** _NSGetEnviron() nothrow;
         private __gshared const(char**)* environPtr;
@@ -3713,7 +3716,7 @@ version (Windows)
         ShellExecuteW(null, "open", url.tempCStringW(), null, null, SW_SHOWNORMAL);
     }
 }
-else version (OSX)
+else version (Darwin)
 {
     import core.stdc.stdio;
     import core.stdc.string;

@@ -78,6 +78,9 @@ version(Windows)
 }
 else version(Posix)
 {
+    version (OSX) version = Darwin;
+    version (iOS) version = Darwin;
+
     version(linux)
     {
         enum : int
@@ -173,7 +176,7 @@ string formatSocketError(int err) @trusted
         {
             cs = strerror_r(err, buf.ptr, buf.length);
         }
-        else version (OSX)
+        else version (Darwin)
         {
             auto errs = strerror_r(err, buf.ptr, buf.length);
             if (errs == 0)

@@ -23,6 +23,8 @@ import core.stdc.stddef;// wchar_t
 import std.range.primitives;// empty, front, isBidirectionalRange
 import std.traits;// Unqual, isSomeChar, isSomeString
 
+version (OSX) version = Darwin;
+version (iOS) version = Darwin;
 
 /++
 If flag $(D KeepTerminator) is set to $(D KeepTerminator.yes), then the delimiter
@@ -56,7 +58,7 @@ version (CRuntime_Glibc)
     version = HAS_GETDELIM;
 }
 
-version (OSX)
+version (Darwin)
 {
     version = GENERIC_IO;
     version = HAS_GETDELIM;

@@ -66,6 +66,9 @@ import std.range.primitives;
 import std.traits;
 import std.typetuple;
 
+version (OSX) version = Darwin;
+version (iOS) version = Darwin;
+
 version(CRuntime_DigitalMars)
 {
     version = DigitalMarsC;
@@ -3716,7 +3719,7 @@ unittest
         assert(stream.data == "1.67 -0X1.47AE147AE147BP+0 nan",
                 stream.data);
     }
-    else version (OSX)
+    else version (Darwin)
     {
         assert(stream.data == "1.67 -0X1.47AE147AE147BP+0 nan",
                 stream.data);
@@ -6242,7 +6245,7 @@ unittest
      */
     //version (linux)
     //    assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan");
-    //else version (OSX)
+    //else version (Darwin)
     //    assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan", s);
     //else
     version (MinGW)

@@ -66,7 +66,8 @@ version(Posix)          enum string dirSeparator = "/";
 else version(Windows)   enum string dirSeparator = "\\";
 else static assert (0, "unsupported platform");
 
-
+version (OSX) version = Darwin;
+version (iOS) version = Darwin;
 
 
 /** Path separator string.  A colon under POSIX, a semicolon
@@ -277,7 +278,7 @@ enum CaseSensitive : bool
     osDefault = osDefaultCaseSensitivity
 }
 version (Windows)    private enum osDefaultCaseSensitivity = false;
-else version (OSX)   private enum osDefaultCaseSensitivity = false;
+else version (Darwin)   private enum osDefaultCaseSensitivity = false;
 else version (Posix) private enum osDefaultCaseSensitivity = true;
 else static assert (0);
 
@@ -3714,7 +3715,7 @@ unittest
         else environment.remove("HOME");
 
         // Test user expansion for root, no /root on Android
-        version (OSX)
+        version (Darwin)
         {
             assert(expandTilde("~root") == "/var/root", expandTilde("~root"));
             assert(expandTilde("~root/") == "/var/root/", expandTilde("~root/"));

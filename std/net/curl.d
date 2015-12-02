@@ -3638,6 +3638,7 @@ private struct CurlAPI
             version (Posix)
                 dlclose(handle);
 
+            // TODO: maybe this is ok because iOS libcurl is static.
             version (OSX)
                 static immutable names = ["libcurl.4.dylib"];
             else version (Posix)

@@ -124,6 +124,9 @@ version(Windows)
 }
 else version(Posix)
 {
+    version (OSX) version = Darwin;
+    version (iOS) version = Darwin;
+
     import core.sys.posix.stdlib;
     import core.sys.posix.sys.time;
 }
@@ -26532,7 +26535,7 @@ auto tz = TimeZone.getTimeZone("America/Los_Angeles");
         {
             version(FreeBSD)      enum utcZone = "Etc/UTC";
             else version(linux)   enum utcZone = "UTC";
-            else version(OSX)     enum utcZone = "UTC";
+            else version(Darwin)  enum utcZone = "UTC";
             else static assert(0, "The location of the UTC timezone file on this Posix platform must be set.");
 
             auto tzs = [testTZ("America/Los_Angeles", "PST", "PDT", dur!"hours"(-8), dur!"hours"(1)),
