@@ -36,6 +36,9 @@ version (Windows)
 }
 else version (Posix)
 {
+    version (OSX) version = Darwin;
+    version (iOS) version = Darwin;
+
     import core.sys.posix.dirent, core.sys.posix.fcntl, core.sys.posix.sys.stat,
         core.sys.posix.sys.time, core.sys.posix.unistd, core.sys.posix.utime;
 }
@@ -1811,7 +1814,7 @@ unittest
     assert(s.length);
 }
 
-version (OSX)
+version (Darwin)
     private extern (C) int _NSGetExecutablePath(char* buf, uint* bufsize);
 else version (FreeBSD)
     private extern (C) int sysctl (const int* name, uint namelen, void* oldp,
@@ -1825,7 +1828,7 @@ else version (FreeBSD)
  */
 @trusted string thisExePath ()
 {
-    version (OSX)
+    version (Darwin)
     {
         import core.sys.posix.stdlib : realpath;
 

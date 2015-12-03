@@ -91,7 +91,10 @@ import std.traits;
 import std.typecons;
 import std.typetuple;
 
-version(OSX)
+version(OSX) version = Darwin;
+version(iOS) version = Darwin;
+
+version(Darwin)
 {
     version = useSysctlbyname;
 }
@@ -164,7 +167,7 @@ else version(useSysctlbyname)
 
     shared static this()
     {
-        version(OSX)
+        version(Darwin)
         {
             auto nameStr = "machdep.cpu.core_count\0".ptr;
         }

@@ -127,6 +127,9 @@ version (Win64)
         version = Win64_DMD_InlineAsm;
 }
 
+version (OSX) version = Darwin;
+version (iOS) version = Darwin;
+
 import core.stdc.math;
 import std.traits;
 
@@ -6899,8 +6902,8 @@ Unqual!(Largest!(F, G)) pow(F, G)(F x, G y) @nogc @trusted pure nothrow
     assert(isIdentical(pow(rninf, -2.0), +0.0));
 
     // @@@BUG@@@ somewhere
-    version(OSX) {} else assert(isNaN(pow(one, dinf)));
-    version(OSX) {} else assert(isNaN(pow(-one, dinf)));
+    version(Darwin) {} else assert(isNaN(pow(one, dinf)));
+    version(Darwin) {} else assert(isNaN(pow(-one, dinf)));
     assert(isNaN(pow(-0.2, PI)));
     // boundary cases. Note that epsilon == 2^^-n for some n,
     // so 1/epsilon == 2^^n is always even.
@@ -7360,7 +7363,7 @@ private real polyImpl(real x, in real[] A) @trusted pure nothrow @nogc
                 ;
             }
         }
-        else version (OSX)
+        else version (Darwin)
         {
             asm pure nothrow @nogc // assembler by W. Bright
             {
