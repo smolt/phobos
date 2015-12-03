@@ -26,6 +26,14 @@ import std.traits;// Unqual, isSomeChar, isSomeString
 version (OSX) version = Darwin;
 version (iOS) version = Darwin;
 
+version (iOS)
+{
+    // iOS has Posix syscalls, but many like fork() return -1.  This module
+    // compiles fine and is valid, but certain unittests will fail as a normal
+    // user app on iOS.  Just skip those tests.
+    version = iOS_SkipTest;
+}
+
 /++
 If flag $(D KeepTerminator) is set to $(D KeepTerminator.yes), then the delimiter
 is included in the strings returned.
@@ -1292,6 +1300,19 @@ Removes the lock over the specified file segment.
 
         // Since locks are per-process, we cannot test lock failures within
         // the same process. fork() is used to create a second process.
+        version(iOS_SkipTest)
+        {
+            pragma(msg, "fork does not work on normal iOS");
+            // this kind of file locking doesn't really make sense in iOS
+            // anyway because processes are not normally allowed to access
+            // the same files.  But can test the basic lock function
+            // within the same process and skip the tests in a second
+            // process.
+            static void runForked(void delegate() code)
+            {
+            }
+        }
+        else
         static void runForked(void delegate() code)
         {
             import core.stdc.stdlib : exit;
