@@ -22,6 +22,12 @@ module std.internal.math.gammafunction;
 import std.internal.math.errorfunction;
 import std.math;
 
+version (iOS) version (ARM) version (unittest)
+{
+    // Some iOS ARM math functions flush subnormals regardless of fpscr.
+    version = SubnormalFlushedToZero;
+}
+
 pure:
 nothrow:
 @safe:
@@ -1664,8 +1670,12 @@ unittest {
 
     assert(approxEqual(logmdigamma(logmdigammaInverse(1)), 1, 1e-15, 0));
     assert(approxEqual(logmdigamma(logmdigammaInverse(real.min_normal)), real.min_normal, 1e-15, 0));
+    // subnormal given to log() in logmdigamma() produces -inf
+    version (SubnormalFlushedToZero) {} else
     assert(approxEqual(logmdigamma(logmdigammaInverse(real.max/2)), real.max/2, 1e-15, 0));
     assert(approxEqual(logmdigammaInverse(logmdigamma(1)), 1, 1e-15, 0));
+    // subnormal given to log() in logmdigamma() produces -inf
+    version (SubnormalFlushedToZero) {} else
     assert(approxEqual(logmdigammaInverse(logmdigamma(real.min_normal)), real.min_normal, 1e-15, 0));
     assert(approxEqual(logmdigammaInverse(logmdigamma(real.max/2)), real.max/2, 1e-15, 0));
 }

@@ -127,11 +127,17 @@ version (Win64)
         version = Win64_DMD_InlineAsm;
 }
 
+import core.stdc.math;
+import std.traits;
+
 version (OSX) version = Darwin;
 version (iOS) version = Darwin;
 
-import core.stdc.math;
-import std.traits;
+version (iOS) version (ARM) version (unittest)
+{
+    // Some iOS ARM math functions flush subnormals regardless of fpscr.
+    version = SubnormalFlushedToZero;
+}
 
 version(LDC)
 {
@@ -2311,12 +2317,22 @@ unittest
     const minEqualMantissaBits = real.mant_dig - 2;
     real x;
     IeeeFlags f;
+
+    // Expected value - handle subnormals for some platforms
+    real expect(real x)
+    {
+        version (SubnormalFlushedToZero)
+            return isSubnormal(x) ? 0.0 : x;
+        else
+            return x;
+    }
+
     foreach (ref pair; exptestpoints)
     {
         resetIeeeFlags();
         x = exp(pair[0]);
         f = ieeeFlags;
-        assert(feqrel(x, pair[1]) >= minEqualMantissaBits);
+        assert(feqrel(x, expect(pair[1])) >= minEqualMantissaBits);
 
         version (IeeeFlagsSupport)
         {
@@ -3038,12 +3054,18 @@ float ldexp(float n, int exp) @safe pure nothrow @nogc { return ldexp(cast(real)
     }
     else static if (floatTraits!(real).realFormat == RealFormat.ieeeDouble)
     {
+        version (SubnormalFlushedToZero)
+            assert(ldexp(1.0L, -1024) == 0);
+        else
         assert(ldexp(1.0L, -1024) == 0x1p-1024L);
         assert(ldexp(1.0L, -1022) == 0x1p-1022L);
         int x;
         real n = frexp(0x1p-1024L, x);
         assert(n==0.5L);
         assert(x==-1023);
+        version (SubnormalFlushedToZero)
+            assert(ldexp(n, x) == 0);
+        else
         assert(ldexp(n, x)==0x1p-1024L);
     }
     else static assert(false, "Floating point type real not supported");
