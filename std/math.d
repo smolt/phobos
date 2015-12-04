@@ -6027,6 +6027,15 @@ pure nothrow @nogc unittest
 }
 
 /**
+ * Returns: true if x isNaN with payload
+ */
+bool isNaNWithPayload(real x, ulong payload) @safe pure nothrow @nogc
+{
+    real other = copysign(NaN(payload), x);
+    return isIdentical(x, other);
+}
+
+/**
  * Extract an integral payload from a $(NAN).
  *
  * Returns:

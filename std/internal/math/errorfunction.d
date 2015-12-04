@@ -235,7 +235,7 @@ unittest {
     assert(erf(real.infinity) == 1.0);
     assert(erf(-real.infinity) == -1.0);
     assert(isIdentical(erf(NaN(0xDEF)),NaN(0xDEF)));
-    assert(isIdentical(erfc(NaN(0xDEF)),NaN(0xDEF)));
+    assert(isNaNWithPayload(erfc(NaN(0xDEF)), 0xDEF));
     assert(isIdentical(erfc(real.infinity),0.0));
     assert(erfc(-real.infinity) == 2.0);
     assert(erfc(0) == 1.0);
