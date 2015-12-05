@@ -169,7 +169,12 @@ else version(useSysctlbyname)
     {
         version(Darwin)
         {
-            auto nameStr = "machdep.cpu.core_count\0".ptr;
+            // hw.logicalcpu considers hyperthreading and same as deprecated
+            // hw.ncpu.  Could also use sysconf(_SC_NPROCESSORS_ONLN) on
+            // Darwin with same result as hw.logicalcpu.
+            // Note: machdep.cpu.core_count is unavailable on iOS, but is same
+            // as hw.physicalcpu
+            auto nameStr = "hw.logicalcpu\0".ptr;
         }
         else version(FreeBSD)
         {
