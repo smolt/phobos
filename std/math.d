@@ -574,8 +574,6 @@ auto abs(Num)(Num y) @safe pure nothrow @nogc
     assert(abs(71.6Li) == 71.6L);
     assert(abs(-56) == 56);
     assert(abs(2321312L)  == 2321312L);
-    // This works for iOS
-    //version(LDC) {} else // LDC_FIXME
     assert(abs(-1L+1i) == sqrt(2.0L));
 }
 
@@ -663,7 +661,11 @@ auto conj(Num)(Num y) @safe pure nothrow @nogc
 
 version(LDC)
 {
-    real cos(real x) @safe pure nothrow @nogc { return llvm_cos(x); }
+    real   cos(real   x) @safe pure nothrow @nogc { return llvm_cos(x); }
+    ///ditto
+    double cos(double x) @safe pure nothrow @nogc { return llvm_cos(x); }
+    ///ditto
+    float  cos(float  x) @safe pure nothrow @nogc { return llvm_cos(x); }
 }
 else
 {
@@ -699,7 +701,11 @@ float cos(float x) @safe pure nothrow @nogc { return cos(cast(real)x); }
  */
 version(LDC)
 {
-    real sin(real x) @safe pure nothrow @nogc { return llvm_sin(x); }
+    real   sin(real   x) @safe pure nothrow @nogc { return llvm_sin(x); }
+    ///ditto
+    double sin(double x) @safe pure nothrow @nogc { return llvm_sin(x); }
+    ///ditto
+    float  sin(float  x) @safe pure nothrow @nogc { return llvm_sin(x); }
 }
 else
 {
@@ -1514,17 +1520,8 @@ unittest
  * indeterminate.
  */
 version(LDC)
-{
-
-long rndtol(real x) @nogc @trusted pure nothrow
-{
-   return core.stdc.math.llroundl(x);
-}
-
-}
+    long rndtol(real x) @nogc @trusted pure nothrow { return core.stdc.math.llroundl(x); }
 else
-{
-
 long rndtol(real x) @nogc @safe pure nothrow;    /* intrinsic */
 //FIXME
 ///ditto
@@ -1532,9 +1529,6 @@ long rndtol(double x) @safe pure nothrow @nogc { return rndtol(cast(real)x); }
 //FIXME
 ///ditto
 long rndtol(float x) @safe pure nothrow @nogc { return rndtol(cast(real)x); }
-
-}
-
 
 /*****************************************
  * Returns x rounded to a long value using the FE_TONEAREST rounding mode.
@@ -1559,7 +1553,9 @@ version(LDC)
     // http://llvm.org/docs/LangRef.html#llvm-sqrt-intrinsic
     // sqrt(x) when x is less than zero is undefined
     real   sqrt(real   x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
+    ///ditto
     double sqrt(double x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
+    ///ditto
     float  sqrt(float  x) @safe pure nothrow @nogc { return x < 0 ? NAN : llvm_sqrt(x); }
 }
 else
@@ -1641,7 +1637,9 @@ creal sqrt(creal z) @nogc @safe pure nothrow
 version(none)
 {   // FIXME: Use of this LLVM intrinsic causes a unit test failure
     real   exp(real   x) @safe pure nothrow @nogc { return llvm_exp(x); }
+    ///ditto
     double exp(double x) @safe pure nothrow @nogc { return llvm_exp(x); }
+    ///ditto
     float  exp(float  x) @safe pure nothrow @nogc { return llvm_exp(x); }
 }
 else
@@ -2006,10 +2004,11 @@ L_largenegative:
  */
 version(none)
 {   // FIXME: Use of this LLVM intrinsic causes a unit test failure
-static if (__traits(compiles, llvm_exp2(3.14L)))
-{
-    real exp2(real x) @safe pure nothrow @nogc { return llvm_exp2(x); }
-}
+    real   exp2(real   x) @safe pure nothrow @nogc { return llvm_exp2(x); }
+    ///ditto
+    double exp2(double x) @safe pure nothrow @nogc { return llvm_exp2(x); }
+    ///ditto
+    float  exp2(float  x) @safe pure nothrow @nogc { return llvm_exp2(x); }
 }
 else
 {
@@ -2394,9 +2393,24 @@ unittest
  */
 creal expi(real y) @trusted pure nothrow @nogc
 {
-    // LDC_FIXME: Temporarily disabled because of precision-related issues
-    // in the unittest below.
-version (none) {
+  version(LDC)
+  {
+    // LDC-specific: don't swap x87 registers for result
+    version(InlineAsm_X86_Any_X87)
+    {
+        asm pure nothrow @nogc
+        {
+            fld y;
+            fsincos;
+        }
+    }
+    else
+    {
+        return cos(y) + sin(y)*1i;
+    }
+  }
+  else
+  {
     version(InlineAsm_X86_Any_X87)
     {
         version (Win64)
@@ -2420,11 +2434,11 @@ version (none) {
             }
         }
     }
-}
     else
     {
         return cos(y) + sin(y)*1i;
     }
+  }
 }
 
 ///
@@ -2995,17 +3009,8 @@ alias FP_ILOGBNAN = core.stdc.math.FP_ILOGBNAN;
  */
 
 version(LDC)
-{
-
-real ldexp(real n, int exp) @nogc @trusted pure nothrow
-{
-    return core.stdc.math.ldexpl(n, exp);
-}
-
-}
+    real ldexp(real n, int exp) @nogc @trusted pure nothrow { return core.stdc.math.ldexpl(n, exp); }
 else
-{
-
 real ldexp(real n, int exp) @nogc @safe pure nothrow;    /* intrinsic */
 //FIXME
 ///ditto
@@ -3013,8 +3018,6 @@ double ldexp(double n, int exp) @safe pure nothrow @nogc { return ldexp(cast(rea
 //FIXME
 ///ditto
 float ldexp(float n, int exp) @safe pure nothrow @nogc { return ldexp(cast(real)n, exp); }
-
-}
 
 ///
 @nogc @safe pure nothrow unittest
@@ -3052,7 +3055,7 @@ float ldexp(float n, int exp) @safe pure nothrow @nogc { return ldexp(cast(real)
     else static if (floatTraits!(real).realFormat == RealFormat.ieeeDouble)
     {
         version (SubnormalFlushedToZero)
-            assert(ldexp(1, -1024) == 0);
+            assert(ldexp(1.0L, -1024) == 0);
         else
         assert(ldexp(1.0L, -1024) == 0x1p-1024L);
         assert(ldexp(1.0L, -1022) == 0x1p-1022L);
@@ -3130,7 +3133,9 @@ unittest
  */
 version(LDC)
 {
-    real log(real x) @safe pure nothrow @nogc { return llvm_log(x); }
+    real   log(real   x) @safe pure nothrow @nogc { return llvm_log(x); }
+    //double log(double x) @safe pure nothrow @nogc { return llvm_log(x); }
+    //float  log(float  x) @safe pure nothrow @nogc { return llvm_log(x); }
 }
 else
 {
@@ -3264,9 +3269,11 @@ real log(real x) @safe pure nothrow @nogc
  *      $(TR $(TD +$(INFIN))    $(TD +$(INFIN)) $(TD no)           $(TD no))
  *      )
  */
-static if (__traits(compiles, llvm_log10(3.14L)))
+version(LDC)
 {
-    real log10(real x) @safe pure nothrow @nogc { return llvm_log10(x); }
+    real   log10(real   x) @safe pure nothrow @nogc { return llvm_log10(x); }
+    //double log10(double x) @safe pure nothrow @nogc { return llvm_log10(x); }
+    //float  log10(float  x) @safe pure nothrow @nogc { return llvm_log10(x); }
 }
 else
 {
@@ -3443,9 +3450,11 @@ real log1p(real x) @safe pure nothrow @nogc
  *  $(TR $(TD +$(INFIN))    $(TD +$(INFIN)) $(TD no)           $(TD no) )
  *  )
  */
-static if (__traits(compiles, llvm_log2(3.14L)))
+version(LDC)
 {
-    real log2(real x) @safe pure nothrow @nogc { return llvm_log2(x); }
+    real   log2(real   x) @safe pure nothrow @nogc { return llvm_log2(x); }
+    //double log2(double x) @safe pure nothrow @nogc { return llvm_log2(x); }
+    //float  log2(float  x) @safe pure nothrow @nogc { return llvm_log2(x); }
 }
 else
 {
@@ -3665,8 +3674,7 @@ real modf(real x, ref real i) @trusted nothrow @nogc
  */
 real scalbn(real x, int n) @trusted nothrow @nogc
 {
-    // FIXME: LDC fild not really supported
-    /*version(InlineAsm_X86_Any_X87) {
+    version(InlineAsm_X86_Any_X87) {
         // scalbnl is not supported on DMD-Windows, so use asm.
         version (Win64)
         {
@@ -3691,9 +3699,9 @@ real scalbn(real x, int n) @trusted nothrow @nogc
         }
     }
     else
-    {*/
+    {
         return core.stdc.math.scalbnl(x, n);
-    /*}*/
+    }
 }
 
 ///
@@ -3735,24 +3743,18 @@ real cbrt(real x) @trusted nothrow @nogc
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD +$(INFIN)) )
  *      )
  */
-static if (__traits(compiles, llvm_fabs(3.14L)))
-{
-    real fabs(real x) @safe pure nothrow @nogc { return llvm_fabs(x); }
-}
-else
-{
 version(LDC)
 {
-    real fabs(real x) @safe pure nothrow @nogc
-    {
-        return copysign(x, 1.0L);
-    }
+    real   fabs(real   x) @safe pure nothrow @nogc { return llvm_fabs(x); }
+    ///ditto
+    double fabs(double x) @safe pure nothrow @nogc { return llvm_fabs(x); }
+    ///ditto
+    float  fabs(float  x) @safe pure nothrow @nogc { return llvm_fabs(x); }
 }
 else
 {
+
 real fabs(real x) @safe pure nothrow @nogc;      /* intrinsic */
-}
-}
 //FIXME
 ///ditto
 double fabs(double x) @safe pure nothrow @nogc { return fabs(cast(real)x); }
@@ -3760,6 +3762,7 @@ double fabs(double x) @safe pure nothrow @nogc { return fabs(cast(real)x); }
 ///ditto
 float fabs(float x) @safe pure nothrow @nogc { return fabs(cast(real)x); }
 
+}
 
 /***********************************************************************
  * Calculates the length of the
@@ -3870,10 +3873,12 @@ unittest
  * Returns the value of x rounded upward to the next integer
  * (toward positive infinity).
  */
-static if (__traits(compiles, llvm_ceil(3.14L)))
+version(LDC)
 {
     real   ceil(real   x) @safe pure nothrow @nogc { return llvm_ceil(x); }
+    ///ditto
     double ceil(double x) @safe pure nothrow @nogc { return llvm_ceil(x); }
+    ///ditto
     float  ceil(float  x) @safe pure nothrow @nogc { return llvm_ceil(x); }
 }
 else
@@ -4009,10 +4014,12 @@ float ceil(float x) @trusted pure nothrow @nogc
  * Returns the value of x rounded downward to the next integer
  * (toward negative infinity).
  */
-static if (__traits(compiles, llvm_floor(3.14L)))
+version(LDC)
 {
     real   floor(real   x) @safe pure nothrow @nogc { return llvm_floor(x); }
+    ///ditto
     double floor(double x) @safe pure nothrow @nogc { return llvm_floor(x); }
+    ///ditto
     float  floor(float  x) @safe pure nothrow @nogc { return llvm_floor(x); }
 }
 else
@@ -4139,9 +4146,11 @@ float floor(float x) @trusted pure nothrow @nogc
  * Unlike the rint functions, nearbyint does not raise the
  * FE_INEXACT exception.
  */
-static if (__traits(compiles, llvm_nearbyint(3.14L)))
+version(LDC)
 {
-    real nearbyint(real x) @safe nothrow @nogc { return llvm_nearbyint(x); }
+    real   nearbyint(real   x) @safe nothrow @nogc { return llvm_nearbyint(x); }
+    //double nearbyint(double x) @safe nothrow @nogc { return llvm_nearbyint(x); }
+    //float  nearbyint(float  x) @safe nothrow @nogc { return llvm_nearbyint(x); }
 }
 else
 {
@@ -4168,35 +4177,24 @@ real nearbyint(real x) @trusted nothrow @nogc
  */
 version(LDC)
 {
-    static if (__traits(compiles, llvm_rint(3.14L)))
-    {
-        real rint(real x) @safe pure nothrow @nogc { return llvm_rint(x); }
-    }
-    else
-    {
-        // BUG: assumes x86/x64 architecture
-        pure nothrow @nogc real rint(real x)
-        {
-            asm
-            {
-                fld x;
-                frndint;
-                fstp x;
-            }
-            return x;
-        }
-    }
+    real   rint(real   x) @safe pure nothrow @nogc { return llvm_rint(x); }
+    ///ditto
+    double rint(double x) @safe pure nothrow @nogc { return llvm_rint(x); }
+    ///ditto
+    float  rint(float  x) @safe pure nothrow @nogc { return llvm_rint(x); }
 }
 else
 {
+
 real rint(real x) @safe pure nothrow @nogc;      /* intrinsic */
-}
 //FIXME
 ///ditto
 double rint(double x) @safe pure nothrow @nogc { return rint(cast(real)x); }
 //FIXME
 ///ditto
 float rint(float x) @safe pure nothrow @nogc { return rint(cast(real)x); }
+
+}
 
 /***************************************
  * Rounds x to the nearest integer value, using the current rounding
@@ -4210,8 +4208,7 @@ float rint(float x) @safe pure nothrow @nogc { return rint(cast(real)x); }
  */
 long lrint(real x) @trusted pure nothrow @nogc
 {
-    // FIXME: LDC fistp not really supported
-    /*version(InlineAsm_X86_Any_X87)
+    version(InlineAsm_X86_Any_X87)
     {
         version (Win64)
         {
@@ -4235,7 +4232,7 @@ long lrint(real x) @trusted pure nothrow @nogc
             return n;
         }
     }
-    else*/
+    else
     {
         alias F = floatTraits!(real);
         static if (F.realFormat == RealFormat.ieeeDouble)
@@ -4363,9 +4360,11 @@ long lrint(real x) @trusted pure nothrow @nogc
  * If the fractional part of x is exactly 0.5, the return value is rounded to
  * the even integer.
  */
-static if (__traits(compiles, llvm_round(3.14L)))
+version(LDC)
 {
-    real round(real x) @safe nothrow @nogc { return llvm_round(x); }
+    real   round(real   x) @safe nothrow @nogc { return llvm_round(x); }
+    //double round(double x) @safe nothrow @nogc { return llvm_round(x); }
+    //float  round(float  x) @safe nothrow @nogc { return llvm_round(x); }
 }
 else
 {
@@ -4415,9 +4414,11 @@ version(Posix)
  *
  * This is also known as "chop" rounding.
  */
-static if (__traits(compiles, llvm_trunc(3.14L)))
+version(LDC)
 {
-    real trunc(real x) @safe pure nothrow @nogc { return llvm_trunc(x); }
+    real   trunc(real   x) @safe pure nothrow @nogc { return llvm_trunc(x); }
+    //double trunc(double x) @safe pure nothrow @nogc { return llvm_trunc(x); }
+    //float  trunc(float  x) @safe pure nothrow @nogc { return llvm_trunc(x); }
 }
 else
 {
@@ -5845,7 +5846,7 @@ int signbit(X)(X x) @nogc @trusted pure nothrow
 /*********************************
  * Return a value composed of to with from's sign bit.
  */
-static if (__traits(compiles, llvm_copysign(3.14L, -1.0L)))
+version(LDC)
 {
     R copysign(R, X)(R to, X from) @safe pure nothrow @nogc
         if (isFloatingPoint!(R) && isFloatingPoint!(X))
@@ -6448,11 +6449,25 @@ real fdim(real x, real y) @safe pure nothrow @nogc { return (x > y) ? x - y : +0
 /****************************************
  * Returns the larger of x and y.
  */
+static if (__traits(compiles, llvm_maxnum(1.0, 2.0))) // LDC-specific
+{
+    real   fmax(real   x, real   y) @safe pure nothrow @nogc { return llvm_maxnum(x, y); }
+    //double fmax(double x, double y) @safe pure nothrow @nogc { return llvm_maxnum(x, y); }
+    //float  fmax(float  x, float  y) @safe pure nothrow @nogc { return llvm_maxnum(x, y); }
+}
+else
 real fmax(real x, real y) @safe pure nothrow @nogc { return x > y ? x : y; }
 
 /****************************************
  * Returns the smaller of x and y.
  */
+static if (__traits(compiles, llvm_minnum(1.0, 2.0))) // LDC-specific
+{
+    real   fmin(real   x, real   y) @safe pure nothrow @nogc { return llvm_minnum(x, y); }
+    //double fmin(double x, double y) @safe pure nothrow @nogc { return llvm_minnum(x, y); }
+    //float  fmin(float  x, float  y) @safe pure nothrow @nogc { return llvm_minnum(x, y); }
+}
+else
 real fmin(real x, real y) @safe pure nothrow @nogc { return x < y ? x : y; }
 
 /**************************************
@@ -6463,7 +6478,9 @@ real fmin(real x, real y) @safe pure nothrow @nogc { return x < y ? x : y; }
  */
 version(LDC)
 {
-    real fma(real x, real y, real z) @safe pure nothrow @nogc { return llvm_fma(x, y, z); }
+    real   fma(real   x, real   y, real   z) @safe pure nothrow @nogc { return llvm_fma(x, y, z); }
+    //double fma(double x, double y, double z) @safe pure nothrow @nogc { return llvm_fma(x, y, z); }
+    //float  fma(float  x, float  y, float  z) @safe pure nothrow @nogc { return llvm_fma(x, y, z); }
 }
 else
 {
@@ -6478,6 +6495,16 @@ real fma(real x, real y, real z) @safe pure nothrow @nogc { return (x * y) + z; 
 Unqual!F pow(F, G)(F x, G n) @nogc @trusted pure nothrow
     if (isFloatingPoint!(F) && isIntegral!(G))
 {
+  version(none)
+  {
+    // Leads to linking error on MSVC x64 as the intrinsic maps to
+    // MSVC++ function `pow(double/float, int)` (a C++ template for
+    // Visual Studio 2015).
+    // Most likely not worth the effort anyway (and hindering CTFE).
+    return llvm_powi!(Unqual!F)(x, cast(int) n);
+  }
+  else
+  {
     real p = 1.0, v = void;
     Unsigned!(Unqual!G) m = n;
     if (n < 0)
@@ -6520,6 +6547,7 @@ Unqual!F pow(F, G)(F x, G n) @nogc @trusted pure nothrow
         v *= v;
     }
     return p;
+  }
 }
 
 @safe pure nothrow @nogc unittest
