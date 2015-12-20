@@ -124,8 +124,14 @@ version(Windows)
 }
 else version(Posix)
 {
-    version (OSX) version = Darwin;
-    version (iOS) version = Darwin;
+    version (OSX)
+        version = Darwin;
+    else version (iOS)
+        version = Darwin;
+    else version (TVOS)
+        version = Darwin;
+    else version (WatchOS)
+        version = Darwin;
 
     import core.sys.posix.stdlib;
     import core.sys.posix.sys.time;

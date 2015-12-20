@@ -66,8 +66,14 @@ version(Posix)          enum string dirSeparator = "/";
 else version(Windows)   enum string dirSeparator = "\\";
 else static assert (0, "unsupported platform");
 
-version (OSX) version = Darwin;
-version (iOS) version = Darwin;
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 
 /** Path separator string.  A colon under POSIX, a semicolon

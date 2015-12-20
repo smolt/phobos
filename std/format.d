@@ -66,8 +66,14 @@ import std.range.primitives;
 import std.traits;
 import std.typetuple;
 
-version (OSX) version = Darwin;
-version (iOS) version = Darwin;
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 version(CRuntime_DigitalMars)
 {

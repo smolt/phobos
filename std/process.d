@@ -94,8 +94,25 @@ version (Posix)
     import core.sys.posix.unistd;
     import core.sys.posix.sys.wait;
 
-    version (OSX) version = Darwin;
-    version (iOS) version = Darwin;
+    version (OSX)
+    {
+        version = Darwin;
+    }
+    else version (iOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (TVOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (WatchOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
 }
 version (Windows)
 {
@@ -724,21 +741,16 @@ private bool isExecutable(in char[] path) @trusted nothrow @nogc //TODO: @safe
     return (access(path.tempCString(), X_OK) == 0);
 }
 
-version (iOS)
+// iOS and embedded Darwin family (watchOS, tvOS) has Posix syscalls, but many
+// like fork() return -1.  This module compiles fine and is valid, but certain
+// unittests will fail as a normal user app on iOS.  Just skip those tests.
+version (DarwinEmbedded) unittest
 {
-    // iOS has Posix syscalls, but many like fork() return -1.  This module
-    // compiles fine and is valid, but certain unittests will fail as a normal
-    // user app on iOS.  Just skip those tests.
-    version = SkipTest;
-
-    version (SkipTest) unittest
-    {
-        import ldc.xyzzy; skipTest();
-        pragma(msg, "many process syscalls do not work on normal iOS");
-    }
+    import ldc.xyzzy; skipTest();
+    pragma(msg, "many process syscalls do not work on normal iOS");
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 version (Posix) unittest
 {
     import std.algorithm;
@@ -765,7 +777,7 @@ private void setCLOEXEC(int fd, bool on)
     assert (flags != -1 || .errno == EBADF);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Command line arguments in spawnProcess().
 {
     version (Windows) TestScript prog =
@@ -783,7 +795,7 @@ unittest // Command line arguments in spawnProcess().
     assert (wait(spawnProcess([prog.path, "foo", "bar"])) == 0);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Environment variables in spawnProcess().
 {
     // We really should use set /a on Windows, but Wine doesn't support it.
@@ -829,7 +841,7 @@ unittest // Environment variables in spawnProcess().
     assert (wait(spawnProcess(envProg.path, env, Config.newEnv)) == 6);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Stream redirection in spawnProcess().
 {
     import std.string;
@@ -878,7 +890,7 @@ unittest // Error handling in spawnProcess()
     assertThrown!ProcessException(spawnProcess("./rgiuhrifuheiohnmnvqweoijwf"));
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Specifying a working directory.
 {
     TestScript prog = "echo foo>bar";
@@ -904,7 +916,7 @@ unittest // Specifying a bad working directory.
     assertThrown!ProcessException(spawnProcess([prog.path], null, Config.none, directory));
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Specifying empty working directory.
 {
     TestScript prog = "";
@@ -914,7 +926,7 @@ unittest // Specifying empty working directory.
     spawnProcess([prog.path], null, Config.none, directory).wait();
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Reopening the standard streams (issue 13258)
 {
     import std.string;
@@ -1022,7 +1034,7 @@ Pid spawnShell(in char[] command,
                       workDir);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     version (Windows)
@@ -1330,7 +1342,7 @@ int wait(Pid pid) @safe
 }
 
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Pid and wait()
 {
     version (Windows)    TestScript prog = "exit %~1";
@@ -1483,7 +1495,7 @@ void kill(Pid pid, int codeOrSignal)
     }
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // tryWait() and kill()
 {
     import core.thread;
@@ -1876,7 +1888,7 @@ enum Redirect
     stdoutToStderr = 16,
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     import std.string;
@@ -1934,7 +1946,7 @@ unittest
     assert (wait(pp.pid) == 1);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     TestScript prog = "exit 0";
@@ -2146,7 +2158,7 @@ private auto executeImpl(alias pipeFunc, Cmd)(
     return Tuple!(int, "status", string, "output")(wait(p.pid), cast(string) a.data);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     import std.string;
@@ -2168,7 +2180,7 @@ unittest
     assert (s.output.stripRight() == "HelloWorld");
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     import std.string;
@@ -3615,7 +3627,7 @@ string shell(string cmd)
         static assert(0, "shell not implemented for this OS.");
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 deprecated unittest
 {
     auto x = shell("echo wyda");

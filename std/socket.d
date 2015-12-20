@@ -78,8 +78,25 @@ version(Windows)
 }
 else version(Posix)
 {
-    version (OSX) version = Darwin;
-    version (iOS) version = Darwin;
+    version (OSX)
+    {
+        version = Darwin;
+    }
+    else version (iOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (TVOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (WatchOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
 
     version(linux)
     {
@@ -2043,9 +2060,10 @@ static if (is(sockaddr_un))
         immutable ubyte[] data = [1, 2, 3, 4];
         Socket[2] pair;
 
-        // iOS tempDir is in the App sandbox and deleteme becomes too long of
-        // a path for unix family socket, so use a relative path
-        version (iOS)
+        // For iOS and embedded family, tempDir is in the App sandbox and
+        // deleteme becomes too long of a path for unix family socket, so use
+        // a relative path
+        version (DarwinEmbedded)
         {
             auto name = "test-unix-socket";
             auto oldwd = (() @trusted => std.file.getcwd()) ();

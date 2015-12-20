@@ -33,7 +33,9 @@ immutable
         win64,     /// Microsoft 64 bit Windows systems
         linux,     /// All Linux Systems
         osx,       /// Mac OS X
-        iOS,       /// iOS iPhoneOS TODO:, make sure ordinal is dont care
+        iOS,       /// iPhone OS (iPad, iPod)
+        tvOS,      /// Apple TV OS
+        watchOS,   /// Apple Watch OS
         freeBSD,   /// FreeBSD
         solaris,   /// Solaris
         android,   /// Android
@@ -47,6 +49,8 @@ immutable
     else version(linux)   OS os = OS.linux;
     else version(OSX)     OS os = OS.osx;
     else version(iOS)     OS os = OS.iOS;
+    else version(TVOS)    OS os = OS.tvOS;
+    else version(WatchOS) OS os = OS.watchOS;
     else version(FreeBSD) OS os = OS.freeBSD;
     else version(Posix)   OS os = OS.otherPosix;
     else static assert(0, "Unknown OS.");

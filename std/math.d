@@ -130,8 +130,14 @@ version (Win64)
 import core.stdc.math;
 import std.traits;
 
-version (OSX) version = Darwin;
-version (iOS) version = Darwin;
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 version (iOS) version (ARM) version (unittest)
 {

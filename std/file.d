@@ -36,8 +36,25 @@ version (Windows)
 }
 else version (Posix)
 {
-    version (OSX) version = Darwin;
-    version (iOS) version = Darwin;
+    version (OSX)
+    {
+        version = Darwin;
+    }
+    else version (iOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (TVOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (WatchOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
 
     import core.sys.posix.dirent, core.sys.posix.fcntl, core.sys.posix.sys.stat,
         core.sys.posix.sys.time, core.sys.posix.unistd, core.sys.posix.utime;
@@ -2648,7 +2665,7 @@ version(Posix) unittest
     // system won't work on iOS
     // Note: this test isn't valid anyway because return value of
     // std.process.system is not checked and if fails, test still passes
-    version (iOS) {} else {
+    version (DarwinEmbedded) {} else {
     d = deleteme~"/a/b/c/d/e/f/g";
     mkdirRecurse(d);
     version(Android) string link_cmd = "ln -s ";

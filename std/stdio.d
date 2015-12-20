@@ -23,8 +23,26 @@ import core.stdc.stddef;// wchar_t
 import std.range.primitives;// empty, front, isBidirectionalRange
 import std.traits;// Unqual, isSomeChar, isSomeString
 
-version (OSX) version = Darwin;
-version (iOS) version = Darwin;
+version (OSX)
+{
+    version = Darwin;
+}
+else version (iOS)
+{
+    version = Darwin;
+    version = DarwinEmbedded;
+}
+else version (TVOS)
+{
+    version = Darwin;
+    version = DarwinEmbedded;
+}
+else version (WatchOS)
+{
+    version = Darwin;
+    version = DarwinEmbedded;
+}
+
 
 /++
 If flag $(D KeepTerminator) is set to $(D KeepTerminator.yes), then the delimiter
@@ -1292,9 +1310,9 @@ Removes the lock over the specified file segment.
 
         // Since locks are per-process, we cannot test lock failures within
         // the same process. fork() is used to create a second process.
-        version(iOS)
+        version(DarwinEmbedded)
         {
-            pragma(msg, "fork does not work on normal iOS");
+            pragma(msg, "fork does not work normally work on embedded darwin");
             // this kind of file locking doesn't really make sense in iOS
             // anyway because processes are not normally allowed to access
             // the same files.  But can test the basic lock function
