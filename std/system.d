@@ -33,6 +33,9 @@ immutable
         win64,     /// Microsoft 64 bit Windows systems
         linux,     /// All Linux Systems
         osx,       /// Mac OS X
+        iOS,       /// iPhone OS (iPad, iPod)
+        tvOS,      /// Apple TV OS
+        watchOS,   /// Apple Watch OS
         freeBSD,   /// FreeBSD
         solaris,   /// Solaris
         android,   /// Android
@@ -42,10 +45,13 @@ immutable
     /// The OS that the program was compiled for.
     version(Win32)        OS os = OS.win32;
     else version(Win64)   OS os = OS.win64;
+    else version(Android) OS os = OS.android;
     else version(linux)   OS os = OS.linux;
     else version(OSX)     OS os = OS.osx;
+    else version(iOS)     OS os = OS.iOS;
+    else version(TVOS)    OS os = OS.tvOS;
+    else version(WatchOS) OS os = OS.watchOS;
     else version(FreeBSD) OS os = OS.freeBSD;
-    else version(Android) OS os = OS.android;
     else version(Posix)   OS os = OS.otherPosix;
     else static assert(0, "Unknown OS.");
 

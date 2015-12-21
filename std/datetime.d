@@ -124,6 +124,15 @@ version(Windows)
 }
 else version(Posix)
 {
+    version (OSX)
+        version = Darwin;
+    else version (iOS)
+        version = Darwin;
+    else version (TVOS)
+        version = Darwin;
+    else version (WatchOS)
+        version = Darwin;
+
     import core.sys.posix.stdlib;
     import core.sys.posix.sys.time;
 }
@@ -297,7 +306,7 @@ immutable string[] timeStrings = ["hnsecs", "usecs", "msecs", "seconds", "minute
     Either can be caught without concern about which
     module it came from.
   +/
-alias TimeException DateTimeException;
+alias DateTimeException = TimeException;
 
 /++
     Effectively a namespace to make it clear that the methods it contains are
@@ -26532,8 +26541,7 @@ auto tz = TimeZone.getTimeZone("America/Los_Angeles");
         {
             version(FreeBSD)      enum utcZone = "Etc/UTC";
             else version(linux)   enum utcZone = "UTC";
-            else version(OSX)     enum utcZone = "UTC";
-            else version(Android) enum utcZone = "UTC";
+            else version(Darwin)  enum utcZone = "UTC";
             else static assert(0, "The location of the UTC timezone file on this Posix platform must be set.");
 
             auto tzs = [testTZ("America/Los_Angeles", "PST", "PDT", dur!"hours"(-8), dur!"hours"(1)),
@@ -26806,7 +26814,7 @@ public:
       +/
     static immutable(LocalTime) opCall() @trusted pure nothrow
     {
-        alias @safe pure nothrow immutable(LocalTime) function() FuncType;
+        alias FuncType = @safe pure nothrow immutable(LocalTime) function();
         return (cast(FuncType)&singleton)();
     }
 
@@ -26966,8 +26974,16 @@ public:
         {
             scope(exit) clearTZEnvVar();
 
-            setTZEnvVar("America/Los_Angeles");
-            assert(LocalTime().dstName == "PDT");
+            version(FreeBSD)
+            {
+                // A bug on FreeBSD 9+ makes it so that this test fails.
+                // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=168862
+            }
+            else
+            {
+                setTZEnvVar("America/Los_Angeles");
+                assert(LocalTime().dstName == "PDT");
+            }
 
             setTZEnvVar("America/New_York");
             assert(LocalTime().dstName == "EDT");
@@ -28804,7 +28820,7 @@ version(StdDdoc)
 
         version(Windows) {}
         else
-            alias void* TIME_ZONE_INFORMATION;
+            alias TIME_ZONE_INFORMATION = void*;
 
         static bool _dstInEffect(const TIME_ZONE_INFORMATION* tzInfo, long stdTime) nothrow;
         static long _utcToTZ(const TIME_ZONE_INFORMATION* tzInfo, long stdTime, bool hasDST) nothrow;
@@ -29292,7 +29308,7 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "America/Buenos_Aires": return "Argentina Standard Time";
         case "America/Cambridge_Bay": return "Mountain Standard Time";
         case "America/Campo_Grande": return "Central Brazilian Standard Time";
-        case "America/Cancun": return "Central Standard Time (Mexico)";
+        case "America/Cancun": return "Eastern Standard Time (Mexico)";
         case "America/Caracas": return "Venezuela Standard Time";
         case "America/Catamarca": return "Argentina Standard Time";
         case "America/Cayenne": return "SA Eastern Standard Time";
@@ -29472,7 +29488,6 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "Asia/Oral": return "West Asia Standard Time";
         case "Asia/Phnom_Penh": return "SE Asia Standard Time";
         case "Asia/Pontianak": return "SE Asia Standard Time";
-        case "Asia/Pyongyang": return "Korea Standard Time";
         case "Asia/Qatar": return "Arab Standard Time";
         case "Asia/Qyzylorda": return "Central Asia Standard Time";
         case "Asia/Rangoon": return "Myanmar Standard Time";
@@ -29616,6 +29631,7 @@ string tzDatabaseNameToWindowsTZName(string tzName) @safe pure nothrow @nogc
         case "PST8PDT": return "Pacific Standard Time";
         case "Pacific/Apia": return "Samoa Standard Time";
         case "Pacific/Auckland": return "New Zealand Standard Time";
+        case "Pacific/Bougainville": return "Central Pacific Standard Time";
         case "Pacific/Efate": return "Central Pacific Standard Time";
         case "Pacific/Enderbury": return "Tonga Standard Time";
         case "Pacific/Fakaofo": return "Tonga Standard Time";
@@ -29711,6 +29727,7 @@ string windowsTZNameToTZDatabaseName(string tzName) @safe pure nothrow @nogc
         case "E. Europe Standard Time": return "Europe/Minsk";
         case "E. South America Standard Time": return "America/Sao_Paulo";
         case "Eastern Standard Time": return "America/New_York";
+        case "Eastern Standard Time (Mexico)": return "America/Cancun";
         case "Egypt Standard Time": return "Africa/Cairo";
         case "Ekaterinburg Standard Time": return "Asia/Yekaterinburg";
         case "FLE Standard Time": return "Europe/Kiev";
@@ -30408,8 +30425,8 @@ version(StdDdoc)
     version(Windows) {}
     else
     {
-        alias void* SYSTEMTIME;
-        alias void* FILETIME;
+        alias SYSTEMTIME = void*;
+        alias FILETIME = void*;
     }
 
     /++
@@ -30696,7 +30713,7 @@ else version(Windows)
 /++
     Type representing the DOS file date/time format.
   +/
-alias uint DosFileTime;
+alias DosFileTime = uint;
 
 /++
     Converts from DOS file date/time to $(LREF SysTime).
@@ -31090,8 +31107,8 @@ unittest
                            function(string a){return map!(b => cast(char)b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
-        alias testParse822!cr test;
-        alias testBadParse822!cr testBad;
+        alias test = testParse822!cr;
+        alias testBad = testBadParse822!cr;
 
         immutable std1 = DateTime(2012, 12, 21, 13, 14, 15);
         immutable std2 = DateTime(2012, 12, 21, 13, 14, 0);
@@ -31355,7 +31372,7 @@ unittest
                            function(string a){return map!(b => cast(char)b)(a.representation);}))
     (){ // avoid slow optimizations for large functions @@@BUG@@@ 2396
         scope(failure) writeln(typeof(cr).stringof);
-        alias testParse822!cr test;
+        alias test = testParse822!cr;
         {
             auto list = ["", " ", " \r\n\t", "\t\r\n (hello world( frien(dog)) silly \r\n )  \t\t \r\n ()",
                          " \n ", "\t\n\t", " \n\t (foo) \n (bar) \r\n (baz) \n "];

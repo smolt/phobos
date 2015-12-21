@@ -93,6 +93,26 @@ version (Posix)
     import core.sys.posix.stdio;
     import core.sys.posix.unistd;
     import core.sys.posix.sys.wait;
+
+    version (OSX)
+    {
+        version = Darwin;
+    }
+    else version (iOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (TVOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
+    else version (WatchOS)
+    {
+        version = Darwin;
+        version = DarwinEmbedded;
+    }
 }
 version (Windows)
 {
@@ -138,7 +158,7 @@ version (Windows)
 // POSIX API declarations.
 version (Posix)
 {
-    version (OSX)
+    version (Darwin)
     {
         extern(C) char*** _NSGetEnviron() nothrow;
         private __gshared const(char**)* environPtr;
@@ -515,8 +535,6 @@ private Pid spawnProcessImpl(in char[] commandLine,
     // Startup info for CreateProcessW().
     STARTUPINFO_W startinfo;
     startinfo.cb = startinfo.sizeof;
-    startinfo.dwFlags = STARTF_USESTDHANDLES;
-
     static int getFD(ref File f) { return f.isOpen ? f.fileno : -1; }
 
     // Extract file descriptors and HANDLEs from the streams and make the
@@ -525,8 +543,12 @@ private Pid spawnProcessImpl(in char[] commandLine,
                               out int fileDescriptor, out HANDLE handle)
     {
         fileDescriptor = getFD(file);
-        if (fileDescriptor < 0)   handle = GetStdHandle(stdHandle);
-        else                      handle = file.windowsHandle;
+        handle = null;
+        if (fileDescriptor >= 0)
+            handle = file.windowsHandle;
+        // Windows GUI applications have a fd but not a valid Windows HANDLE.
+        if (handle is null || handle == INVALID_HANDLE_VALUE)
+            handle = GetStdHandle(stdHandle);
 
         DWORD dwFlags;
         if (GetHandleInformation(handle, &dwFlags))
@@ -550,13 +572,19 @@ private Pid spawnProcessImpl(in char[] commandLine,
     prepareStream(stdout, STD_OUTPUT_HANDLE, "stdout", stdoutFD, startinfo.hStdOutput);
     prepareStream(stderr, STD_ERROR_HANDLE,  "stderr", stderrFD, startinfo.hStdError );
 
+    if ((startinfo.hStdInput  != null && startinfo.hStdInput  != INVALID_HANDLE_VALUE)
+     || (startinfo.hStdOutput != null && startinfo.hStdOutput != INVALID_HANDLE_VALUE)
+     || (startinfo.hStdError  != null && startinfo.hStdError  != INVALID_HANDLE_VALUE))
+        startinfo.dwFlags = STARTF_USESTDHANDLES;
+
     // Create process.
     PROCESS_INFORMATION pi;
     DWORD dwCreationFlags =
         CREATE_UNICODE_ENVIRONMENT |
         ((config & Config.suppressConsole) ? CREATE_NO_WINDOW : 0);
+    auto pworkDir = workDir.tempCStringW();     // workaround until Bugzilla 14696 is fixed
     if (!CreateProcessW(null, commandLine.tempCStringW().buffPtr, null, null, true, dwCreationFlags,
-                        envz, workDir.length ? workDir.tempCStringW() : null, &startinfo, &pi))
+                        envz, workDir.length ? pworkDir : null, &startinfo, &pi))
         throw ProcessException.newFromLastError("Failed to spawn new process");
 
     // figure out if we should close any of the streams
@@ -713,21 +741,16 @@ private bool isExecutable(in char[] path) @trusted nothrow @nogc //TODO: @safe
     return (access(path.tempCString(), X_OK) == 0);
 }
 
-version (iOS)
+// iOS and embedded Darwin family (watchOS, tvOS) has Posix syscalls, but many
+// like fork() return -1.  This module compiles fine and is valid, but certain
+// unittests will fail as a normal user app on iOS.  Just skip those tests.
+version (DarwinEmbedded) unittest
 {
-    // iOS has Posix syscalls, but many like fork() return -1.  This module
-    // compiles fine and is valid, but certain unittests will fail as a normal
-    // user app on iOS.  Just skip those tests.
-    version = SkipTest;
-    
-    version (SkipTest) unittest
-    {
-        import ldc.xyzzy; skipTest();
-        pragma(msg, "many process syscalls do not work on normal iOS");
-    }
+    import ldc.xyzzy; skipTest();
+    pragma(msg, "many process syscalls do not work on normal iOS");
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 version (Posix) unittest
 {
     import std.algorithm;
@@ -754,7 +777,7 @@ private void setCLOEXEC(int fd, bool on)
     assert (flags != -1 || .errno == EBADF);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Command line arguments in spawnProcess().
 {
     version (Windows) TestScript prog =
@@ -772,7 +795,7 @@ unittest // Command line arguments in spawnProcess().
     assert (wait(spawnProcess([prog.path, "foo", "bar"])) == 0);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Environment variables in spawnProcess().
 {
     // We really should use set /a on Windows, but Wine doesn't support it.
@@ -818,7 +841,7 @@ unittest // Environment variables in spawnProcess().
     assert (wait(spawnProcess(envProg.path, env, Config.newEnv)) == 6);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Stream redirection in spawnProcess().
 {
     import std.string;
@@ -867,7 +890,7 @@ unittest // Error handling in spawnProcess()
     assertThrown!ProcessException(spawnProcess("./rgiuhrifuheiohnmnvqweoijwf"));
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Specifying a working directory.
 {
     TestScript prog = "echo foo>bar";
@@ -893,7 +916,7 @@ unittest // Specifying a bad working directory.
     assertThrown!ProcessException(spawnProcess([prog.path], null, Config.none, directory));
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Specifying empty working directory.
 {
     TestScript prog = "";
@@ -903,7 +926,7 @@ unittest // Specifying empty working directory.
     spawnProcess([prog.path], null, Config.none, directory).wait();
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Reopening the standard streams (issue 13258)
 {
     import std.string;
@@ -927,6 +950,19 @@ unittest // Reopening the standard streams (issue 13258)
 
     auto lines = readText(tmpFile).splitLines();
     assert(lines == ["foo", "bar"]);
+}
+
+version (Windows)
+unittest // MSVCRT workaround (issue 14422)
+{
+    auto fn = uniqueTempPath();
+    std.file.write(fn, "AAAAAAAAAA");
+
+    auto f = File(fn, "a");
+    spawnProcess(["cmd", "/c", "echo BBBBB"], std.stdio.stdin, f).wait();
+
+    auto data = readText(fn);
+    assert(data == "AAAAAAAAAABBBBB\r\n", data);
 }
 
 /**
@@ -998,7 +1034,7 @@ Pid spawnShell(in char[] command,
                       workDir);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     version (Windows)
@@ -1012,7 +1048,7 @@ unittest
     auto env = ["foo" : "bar"];
     assert (wait(spawnShell(cmd~redir, env)) == 0);
     auto f = File(tmpFile, "a");
-    version(Win64) f.seek(0, SEEK_END); // MSVCRT probably seeks to the end when writing, not before
+    version(CRuntime_Microsoft) f.seek(0, SEEK_END); // MSVCRT probably seeks to the end when writing, not before
     assert (wait(spawnShell(cmd, std.stdio.stdin, f, std.stdio.stderr, env)) == 0);
     f.close();
     auto output = std.file.readText(tmpFile);
@@ -1306,7 +1342,7 @@ int wait(Pid pid) @safe
 }
 
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // Pid and wait()
 {
     version (Windows)    TestScript prog = "exit %~1";
@@ -1459,7 +1495,7 @@ void kill(Pid pid, int codeOrSignal)
     }
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest // tryWait() and kill()
 {
     import core.thread;
@@ -1852,7 +1888,7 @@ enum Redirect
     stdoutToStderr = 16,
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     import std.string;
@@ -1910,7 +1946,7 @@ unittest
     assert (wait(pp.pid) == 1);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     TestScript prog = "exit 0";
@@ -2122,7 +2158,7 @@ private auto executeImpl(alias pipeFunc, Cmd)(
     return Tuple!(int, "status", string, "output")(wait(p.pid), cast(string) a.data);
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     import std.string;
@@ -2144,7 +2180,7 @@ unittest
     assert (s.output.stripRight() == "HelloWorld");
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 unittest
 {
     import std.string;
@@ -2189,7 +2225,7 @@ class ProcessException : Exception
     {
         import core.stdc.errno;
         import core.stdc.string;
-        version (linux)
+        version (CRuntime_Glibc)
         {
             char[1024] buf;
             auto errnoMsg = to!string(
@@ -2231,8 +2267,8 @@ $(D "/bin/sh").
 @property string userShell() @safe
 {
     version (Windows)      return environment.get("COMSPEC", "cmd.exe");
-    else version (Android) return environment.get("SHELL", "/system/bin/sh");
-    else version (Posix)   return environment.get("SHELL", "/bin/sh");
+    else version (Android) return "/system/bin/sh";
+    else version (Posix)   return "/bin/sh";
 }
 
 
@@ -3207,7 +3243,8 @@ private void toAStringz(in string[] a, const(char)**az)
 //{
 //    int spawnvp(int mode, string pathname, string[] argv)
 //    {
-//      char** argv_ = cast(char**)alloca((char*).sizeof * (1 + argv.length));
+//      char** argv_ = cast(char**)core.stdc.stdlib.malloc((char*).sizeof * (1 + argv.length));
+//      scope(exit) core.stdc.stdlib.free(argv_);
 //
 //      toAStringz(argv, argv_);
 //
@@ -3225,7 +3262,8 @@ alias P_NOWAIT = _P_NOWAIT;
 deprecated("Please use spawnProcess instead")
 int spawnvp(int mode, string pathname, string[] argv)
 {
-    auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
+    auto argv_ = cast(const(char)**)core.stdc.stdlib.malloc((char*).sizeof * (1 + argv.length));
+    scope(exit) core.stdc.stdlib.free(argv_);
 
     toAStringz(argv, argv_);
 
@@ -3429,7 +3467,8 @@ extern(C)
 
 private int execv_(in string pathname, in string[] argv)
 {
-    auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
+    auto argv_ = cast(const(char)**)core.stdc.stdlib.malloc((char*).sizeof * (1 + argv.length));
+    scope(exit) core.stdc.stdlib.free(argv_);
 
     toAStringz(argv, argv_);
 
@@ -3438,8 +3477,10 @@ private int execv_(in string pathname, in string[] argv)
 
 private int execve_(in string pathname, in string[] argv, in string[] envp)
 {
-    auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
-    auto envp_ = cast(const(char)**)alloca((char*).sizeof * (1 + envp.length));
+    auto argv_ = cast(const(char)**)core.stdc.stdlib.malloc((char*).sizeof * (1 + argv.length));
+    scope(exit) core.stdc.stdlib.free(argv_);
+    auto envp_ = cast(const(char)**)core.stdc.stdlib.malloc((char*).sizeof * (1 + envp.length));
+    scope(exit) core.stdc.stdlib.free(envp_);
 
     toAStringz(argv, argv_);
     toAStringz(envp, envp_);
@@ -3449,7 +3490,8 @@ private int execve_(in string pathname, in string[] argv, in string[] envp)
 
 private int execvp_(in string pathname, in string[] argv)
 {
-    auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
+    auto argv_ = cast(const(char)**)core.stdc.stdlib.malloc((char*).sizeof * (1 + argv.length));
+    scope(exit) core.stdc.stdlib.free(argv_);
 
     toAStringz(argv, argv_);
 
@@ -3494,8 +3536,10 @@ version(Posix)
 }
 else version(Windows)
 {
-    auto argv_ = cast(const(char)**)alloca((char*).sizeof * (1 + argv.length));
-    auto envp_ = cast(const(char)**)alloca((char*).sizeof * (1 + envp.length));
+    auto argv_ = cast(const(char)**)core.stdc.stdlib.malloc((char*).sizeof * (1 + argv.length));
+    scope(exit) core.stdc.stdlib.free(argv_);
+    auto envp_ = cast(const(char)**)core.stdc.stdlib.malloc((char*).sizeof * (1 + envp.length));
+    scope(exit) core.stdc.stdlib.free(envp_);
 
     toAStringz(argv, argv_);
     toAStringz(envp, envp_);
@@ -3583,7 +3627,7 @@ string shell(string cmd)
         static assert(0, "shell not implemented for this OS.");
 }
 
-version (SkipTest) {} else
+version (DarwinEmbedded) {} else
 deprecated unittest
 {
     auto x = shell("echo wyda");
@@ -3684,7 +3728,7 @@ version (Windows)
         ShellExecuteW(null, "open", url.tempCStringW(), null, null, SW_SHOWNORMAL);
     }
 }
-else version (OSX)
+else version (Darwin)
 {
     import core.stdc.stdio;
     import core.stdc.string;
@@ -3694,17 +3738,18 @@ else version (OSX)
     {
         const(char)*[5] args;
 
+        auto curl = url.tempCString();
         const(char)* browser = core.stdc.stdlib.getenv("BROWSER");
         if (browser)
         {   browser = strdup(browser);
             args[0] = browser;
-            args[1] = url.tempCString();
+            args[1] = curl;
             args[2] = null;
         }
         else
         {
             args[0] = "open".ptr;
-            args[1] = url.tempCString();
+            args[1] = curl;
             args[2] = null;
         }
 

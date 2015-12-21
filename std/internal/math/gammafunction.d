@@ -22,7 +22,7 @@ module std.internal.math.gammafunction;
 import std.internal.math.errorfunction;
 import std.math;
 
-// Until reason for these unittest differences are are resolved, just warn
+// Until reason for these unitttest differences are are resolved, just warn
 // that there is some work to do.
 version (WIP_FloatPrecIssue) unittest
 {
@@ -30,6 +30,12 @@ version (WIP_FloatPrecIssue) unittest
     //import ldc.xyzzy; failedTest();
     import std.stdio: writeln;
     writeln("\nSome unittests have the precision bar lowered");
+}
+
+version (iOS) version (ARM) version (unittest)
+{
+    // Some iOS ARM math functions flush subnormals regardless of fpscr.
+    version = SubnormalFlushedToZero;
 }
 
 pure:
@@ -1622,4 +1628,83 @@ unittest {
         assert(approxEqual(digamma(x), log(x) - logmdigamma(x)));
     for(auto x = 1.0; x < 15.0; x += 1.0)
         assert(approxEqual(digamma(x), log(x) - logmdigamma(x)));
+}
+
+/** Inverse of the Log Minus Digamma function
+ *
+ *   Returns x such $(D log(x) - digamma(x) == y).
+ *
+ * References:
+ *   1. Abramowitz, M., and Stegun, I. A. (1970).
+ *      Handbook of mathematical functions. Dover, New York,
+ *      pages 258-259, equation 6.3.18.
+ *
+ * Authors: Ilya Yaroshenko
+ */
+real logmdigammaInverse(real y)
+{
+    import std.numeric: findRoot;
+    enum maxY = logmdigamma(real.min_normal);
+    static assert(maxY > 0 && maxY <= real.max);
+
+    if (y >= maxY)
+    {
+        //lim x->0 (log(x)-digamma(x))*x == 1
+        return 1 / y;
+    }
+    if (y < 0)
+    {
+        return real.nan;
+    }
+    if (y < real.min_normal)
+    {
+        //6.3.18
+        return 0.5 / y;
+    }
+    if (y > 0)
+    {
+        // x/2 <= logmdigamma(1 / x) <= x, x > 0
+        // calls logmdigamma ~6 times
+        return 1 / findRoot((real x) => logmdigamma(1 / x) - y, y,  2*y);
+    }
+    return y; //NaN
+}
+
+unittest {
+    import std.typecons;
+    //WolframAlpha, 22.02.2015
+    immutable Tuple!(real, real)[5] testData = [
+        tuple(1.0L, 0.615556766479594378978099158335549201923L),
+        tuple(1.0L/8, 4.15937801516894947161054974029150730555L),
+        tuple(1.0L/1024, 512.166612384991507850643277924243523243L),
+        tuple(0.000500083333325000003968249801594877323784632117L, 1000.0L),
+        tuple(1017.644138623741168814449776695062817947092468536L, 1.0L/1024),
+    ];
+
+/+ TODO: can delete this
+    // Really only need bar lowered for case 1 with expected result 4.159...
+    // Actual result on iOS armv7/arm64 matches 50 bits out of 53 bits
+    //   actual   0x1.0a333fd8b688p+2
+    //   expected 0x1.0a333fd8b687bp+2
+    // (- 1 (- 1 (expt 2.0 -50))) 8.881784197001252e-16
+    // (- 1 (- 1 (expt 2.0 -49))) 1.7763568394002505e-15
+
+    version (WIP_FloatPrecIssue)
+        real maxRelDiff = 1e-14;
+    else
+        real maxRelDiff = 1e-15;
++/
+    foreach (test; testData)
+        assert(approxEqual(logmdigammaInverse(test[0]), test[1], 2e-15, 0));
+
+    assert(approxEqual(logmdigamma(logmdigammaInverse(1)), 1, 1e-15, 0));
+    assert(approxEqual(logmdigamma(logmdigammaInverse(real.min_normal)), real.min_normal, 1e-15, 0));
+    // subnormal given to log() in logmdigamma() produces -inf
+    version (SubnormalFlushedToZero) {} else
+    assert(approxEqual(logmdigamma(logmdigammaInverse(real.max/2)), real.max/2, 1e-15, 0));
+    assert(approxEqual(logmdigammaInverse(logmdigamma(1)), 1, 1e-15, 0));
+    // subnormal given to log() in logmdigamma() produces -inf
+    version (SubnormalFlushedToZero) {} else
+    assert(approxEqual(logmdigammaInverse(logmdigamma(real.min_normal)), real.min_normal, 1e-15, 0));
+    assert(approxEqual(logmdigammaInverse(logmdigamma(real.max/2)), real.max/2, 1e-15, 0));
 }

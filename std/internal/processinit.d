@@ -7,11 +7,20 @@
     Copyright: Copyright 2011 -
     License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
     Authors:   Jonathan M Davis and Kato Shoichi
-    Source:    $(PHOBOSSRC std/_datetime.d)
+    Source:    $(PHOBOSSRC std/internal/_processinit.d)
   +/
 module std.internal.processinit;
 
-version(OSX)
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
+version(Darwin)
 {
     extern(C) void std_process_shared_static_this();
 
