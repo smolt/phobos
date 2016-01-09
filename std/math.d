@@ -139,9 +139,9 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
-version (iOS) version (ARM) version (unittest)
+version (Darwin) version (ARM) version (unittest)
 {
-    // Some iOS ARM math functions flush subnormals regardless of fpscr.
+    // Some ARM math functions flush subnormals regardless of fpscr.
     version = SubnormalFlushedToZero;
 }
 
@@ -4874,6 +4874,8 @@ assert(rint(1.1) == 1);
  */
 struct FloatingPointControl
 {
+    // TODO: add ARM specific controls for toggling flush to zero and default
+    // nan modes
     alias RoundingMode = uint;
 
     /** IEEE rounding modes.
@@ -6719,7 +6721,6 @@ real pow(I, F)(I x, F y) @nogc @trusted pure nothrow
  *      $(TD no)        $(TD no) )
  * )
  */
-//version (none)
 // For iOS, the LLVM pow intrinsic passes unittests, alternate does not when
 // optimzing, probably because of CTFE.
 version(LDC)
