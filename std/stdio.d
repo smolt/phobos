@@ -1312,7 +1312,7 @@ Removes the lock over the specified file segment.
         // the same process. fork() is used to create a second process.
         version(DarwinEmbedded)
         {
-            pragma(msg, "fork does not work normally work on embedded darwin");
+            pragma(msg, "fork does not normally work on embedded darwin");
             // this kind of file locking doesn't really make sense in iOS
             // anyway because processes are not normally allowed to access
             // the same files.  But can test the basic lock function
